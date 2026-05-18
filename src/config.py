@@ -6,3 +6,12 @@ the inference or prompt logic.
 
 Implementation pending — scaffolding only.
 """
+
+DEFAULT_ATTRIBUTES: list[str] = [
+    "competent",
+    "likeable", 
+    "considerate",
+    "polite",
+    "formal",
+    "demanding",
+]

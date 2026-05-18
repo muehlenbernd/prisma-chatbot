@@ -56,8 +56,15 @@ constant character performance.
 **Output format:** Structured JSON with `response` (string) and `evaluation`
 (object with six attribute scores 1–7).
 
-**Evaluation dimensions:** competent, knowledgeable, well-prepared, helpful,
-likeable, pedantic. (Matches the CMCL/EMNLP study attributes.)
+**Evaluation dimensions (v1 default set):** competent, likeable, 
+considerate, polite, formal, demanding. v1 ships with this fixed 
+general-purpose set chosen to produce meaningful variance across diverse 
+conversational inputs. v2 will allow users to pick up to six attributes 
+from an extended list (candidates include: pushy, knowledgeable, 
+well-prepared, helpful, pedantic, arrogant, warm, evasive — to be 
+finalized). The CMCL/EMNLP-specific attributes (pedantic, well-prepared) 
+move to the extended list since they only activate around precision-
+related stimuli.
 
 **Key design property:** evaluations update *dynamically* across the
 conversation. This reflects the research finding that social meaning is

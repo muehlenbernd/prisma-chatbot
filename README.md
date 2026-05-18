@@ -1,61 +1,129 @@
 # prisma-chatbot
 
-> Have you ever wondered what your chatbot thinks about you?
+> *Have you ever wondered what your chatbot thinks about you?*
 
-**Prisma** (*Pragmatic Real-time Inference of Social Meaning in Agents*) is a
-conversational AI demo that responds to users while simultaneously evaluating
-them on social/pragmatic dimensions. It accompanies published research on
-LLM social perception (CMCL 2026; EMNLP 2026, under review).
+<p align="center">
+  <img src="assets/prisma-figure.svg" alt="PRISMA: a prism refracting a text stream into six social-perception attributes" width="720">
+</p>
 
-> **TODO:** Replace with a short hero paragraph and screenshot once the demo
-> is live.
+**PRISMA** — **P**ragmatic **R**eal-time **I**nference of **S**ocial **M**eaning in **A**gents — is a conversational demo that flips the usual chatbot dynamic: while you talk to *Prisma*, she also forms impressions of you based on how you write. As the conversation unfolds, her assessment updates turn by turn. You can open the impressions panel at any time to see her current view — and scroll back to see how it evolved.
 
-## Live demo
+This project is a research-facing artifact accompanying published work on LLM social perception (CMCL 2026; EMNLP 2026, under review).
 
-> **TODO:** Add Hugging Face Space link.
+**Live demo:** *coming soon (Hugging Face Space)*
+**Research papers:** [CMCL 2026 — link to be added] · [EMNLP 2026 — pending]
 
-## What it does
+---
 
-> **TODO:** 2–3 sentence description of the dual-role design — Prisma
-> responds in conversation while producing a structured evaluation of the
-> user across six attributes (competent, knowledgeable, well-prepared,
-> helpful, likeable, pedantic). Evaluation updates turn by turn.
+## What this is
+
+A Gradio app running on Hugging Face Spaces, powered by Llama 3.3 70B via the HF Inference API. On every turn, the model produces both a conversational response and an evaluation of the user across six social-perception dimensions. Evaluations are stored per turn, so the temporal trajectory of Prisma's impression is preserved and inspectable.
+
+### The six dimensions (v1)
+
+The default attribute set is:
+
+- **competent**
+- **likeable**
+- **considerate**
+- **polite**
+- **formal**
+- **demanding**
+
+Each is rated 1–7, displayed with both a numeric score and a verbal intensifier — for example, *quite polite (5/7)* or *barely demanding (2/7)*. A future version will let users customize the dimensions from an extended list.
+
+### Design principles
+
+- **Implicit evaluation.** Prisma's response and her evaluation are kept separate. Her replies stay clean and conversational; the evaluation surfaces only when you open the impressions panel.
+- **General prompting.** Prisma is not told *what* to attend to. The instruction mirrors the experimental paradigm: *"based on what the user has said, rate them on the following dimensions."* This tests whether the model has internalized human-like inductive biases for social perception, rather than steering it toward a particular cue.
+- **Running evaluation.** Each turn updates the impression based on the full conversation so far. Users can scrub back through past turns to see how Prisma's view of them shifted as they wrote more.
+
+---
+
+## What this is not
+
+- Not a production chatbot — it is a research demo with a specific thesis.
+- Not a generic LLM wrapper — the dual-role evaluation is the point.
+- Not a psychological assessment tool — the evaluation is playful, not diagnostic.
+
+---
 
 ## Research context
 
-> **TODO:** Link to CMCL and EMNLP papers; one paragraph on the research
-> thesis (do LLMs evaluate speakers based on linguistic choices the way
-> humans do?).
+The project is grounded in ongoing work investigating whether LLMs evaluate speakers based on linguistic choices in ways comparable to human listeners. Does *"I'll be there at 7:03"* vs. *"around 7"* shift perceived competence or pedantry? Does formal phrasing read as more competent regardless of content? The CMCL 2026 paper calibrates several open-source models on a battery of such pragmatic and sociolinguistic tasks; the EMNLP 2026 submission extends this to controlled experimental designs on speaker motive attribution.
 
-## Local development
+Prisma takes this research and makes it interactive: rather than aggregating model judgments across thousands of stimuli, it surfaces a single model's running social perception in real time, for a real user.
 
-> **TODO:** Flesh out once `app.py` and the `src/` modules are implemented.
+---
+
+## Tech stack
+
+- Python 3.11+
+- [Gradio](https://www.gradio.app/) — UI framework
+- [Hugging Face Inference API](https://huggingface.co/docs/inference-providers) — model serving
+- [Llama 3.3 70B Instruct](https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct) — base model
+
+---
+
+## Local setup
 
 ```bash
-# Clone, create a virtualenv, install deps
+git clone https://github.com/<your-username>/prisma-chatbot.git
+cd prisma-chatbot
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate          # macOS/Linux
 pip install -r requirements.txt
-
-# Copy env template and add your HF token
 cp .env.example .env
-
-# Run the Gradio app locally
+# Edit .env: add your HF_TOKEN
 python app.py
 ```
 
-## Project structure
+You'll need a Hugging Face account with access to Llama 3.3 70B (request access from the [model page](https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct)).
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for design decisions and
-[`ROADMAP.md`](ROADMAP.md) for the deployment plan.
+---
 
-## Contributing
+## Repository structure
 
-This is a personal research project and public portfolio artifact. Issues
-are welcome — feel free to open one if you spot a bug, have a question
-about the research, or want to suggest a feature. Pull requests are by
-invitation only; please open an issue first to discuss.
+```
+prisma-chatbot/
+├── app.py                 # Gradio app entry point
+├── src/
+│   ├── prompt.py          # System prompt construction
+│   ├── inference.py       # HF Inference API client wrapper
+│   ├── evaluation.py      # Score parsing, validation, formatting
+│   └── config.py          # Default attributes, constants
+├── scripts/
+│   └── test_prompt.py     # Smoke-test harness for the system prompt
+├── tests/                 # Pytest unit tests
+├── assets/                # UI copy, figures
+├── CLAUDE.md              # Instructions for AI coding assistants
+├── ARCHITECTURE.md        # Design rationale
+└── ROADMAP.md             # Milestones and future work
+```
+
+---
+
+## Roadmap
+
+**v1** (current): Llama 3.3 70B, six fixed default attributes, toggleable impressions panel with per-turn navigation, 12-turn session cap.
+
+**v2** (planned):
+- Graphical impressions: bar plots of current scores, line plot of trajectory across turns
+- Attribute customization: users select up to 6 dimensions from an extended list (~15–20 options including *knowledgeable*, *well-prepared*, *pedantic*, *pushy*, *helpful*, *warm*, *arrogant*, *evasive*, ...)
+- Compare-models mode: same conversation, side-by-side perceptions by different models
+
+See [ROADMAP.md](ROADMAP.md) for details.
+
+---
 
 ## License
 
-See [`LICENSE`](LICENSE) (MIT).
+[MIT](LICENSE)
+
+---
+
+## Acknowledgments
+
+Built as a research-dissemination artifact and portfolio project.
+
+> Note: PRISMA / prisma-chatbot is unrelated to the [Prisma ORM](https://www.prisma.io/) or the Prisma photo app of the same name.

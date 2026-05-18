@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500" role="img" aria-label="PRISMA: a prism refracting a text stream into six social-perception attributes">
+  <defs>
+    <!-- Dark backdrop, restored -->
+    <radialGradient id="bg" cx="55%" cy="50%" r="65%">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#08080f"/>
+    </radialGradient>
+
+    <!-- White beam entering the prism -->
+    <linearGradient id="whiteBeam" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="50%"  stop-color="#ffffff" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="1"/>
+    </linearGradient>
+
+    <!-- Glass body: very translucent, cool tint, varies across width -->
+    <linearGradient id="prismGlass" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#9bb4d8" stop-opacity="0.22"/>
+      <stop offset="40%"  stop-color="#c8d6ee" stop-opacity="0.10"/>
+      <stop offset="70%"  stop-color="#a8b8d8" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#7a8db2" stop-opacity="0.28"/>
+    </linearGradient>
+
+    <!-- Specular highlight gradient: bright streak fading to nothing -->
+    <linearGradient id="specular" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Subtle chromatic fringe at exit face -->
+    <linearGradient id="chromaFringe" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.55"/>
+    </linearGradient>
+
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="beamGlow" x="-20%" y="-50%" width="140%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- LED glow for the robot-face elements -->
+    <filter id="ledGlow" x="-200%" y="-200%" width="500%" height="500%">
+      <feGaussianBlur stdDeviation="1.8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Soft aura behind the prism to feel like it's lit -->
+    <radialGradient id="prismAura" cx="50%" cy="55%" r="55%">
+      <stop offset="0%"   stop-color="#9bb4d8" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#9bb4d8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="900" height="500" fill="url(#bg)"/>
+
+  <!-- Atmospheric haze around prism -->
+  <ellipse cx="440" cy="240" rx="220" ry="170" fill="url(#prismAura)"/>
+
+  <!-- Sample utterances flowing toward the prism -->
+  <g font-family="ui-monospace, 'SF Mono', 'Cascadia Code', monospace" font-size="17" fill="#9ca3af">
+    <text x="22" y="180" opacity="0.35">&quot;How does this actually work?&quot;</text>
+    <text x="22" y="210" opacity="0.55">&quot;Could you maybe explain&#8230;&quot;</text>
+    <text x="22" y="240" opacity="0.90">&quot;I&#8217;ll be there at 7:03 sharp&quot;</text>
+    <text x="22" y="270" opacity="0.72">&quot;around seven-ish, I guess&quot;</text>
+    <text x="22" y="300" opacity="0.45">&quot;Hi, I&#8217;m curious about&#8230;&quot;</text>
+  </g>
+
+  <!-- White light beam entering the prism -->
+  <rect x="200" y="246" width="200" height="7" fill="url(#whiteBeam)" filter="url(#beamGlow)"/>
+
+  <!-- ===== Prism (glass-like, layered) ===== -->
+
+  <!-- Layer 1: main glass body -->
+  <polygon points="440,130 350,340 530,340"
+           fill="url(#prismGlass)"/>
+
+  <!-- Layer 2: a faint inner sheen polygon, offset inward, to suggest thickness -->
+  <polygon points="440,148 363,332 517,332"
+           fill="none"
+           stroke="#cfdcf2"
+           stroke-width="0.6"
+           opacity="0.22"/>
+
+  <!-- Layer 3: specular highlight streak on the left face (light reflecting off glass) -->
+  <polygon points="440,148 405,228 416,232 440,158"
+           fill="url(#specular)"
+           opacity="0.9"/>
+
+  <!-- Layer 4: thin chromatic fringe along the right (exit) face -->
+  <line x1="438" y1="135" x2="528" y2="338"
+        stroke="url(#chromaFringe)" stroke-width="1.2" opacity="0.7"/>
+
+  <!-- Layer 5: crisp outer edges -->
+  <polygon points="440,130 350,340 530,340"
+           fill="none"
+           stroke="#e8eefb"
+           stroke-width="1.4"
+           stroke-opacity="0.9"/>
+
+  <!-- Layer 6: extra-bright caustic highlight on the leading (left) edge -->
+  <line x1="440" y1="130" x2="350" y2="340"
+        stroke="#ffffff" stroke-width="0.8" opacity="0.85"/>
+  <!-- and a softer one on the base -->
+  <line x1="350" y1="340" x2="530" y2="340"
+        stroke="#ffffff" stroke-width="0.5" opacity="0.35"/>
+
+  <!-- Layer 7: tiny sparkle at apex (corner caustic) -->
+  <circle cx="440" cy="130" r="2.4" fill="#ffffff" opacity="0.9" filter="url(#ledGlow)"/>
+
+  <!-- ===== Subtle robot-face features (LED-style on dark glass) ===== -->
+  <g filter="url(#ledGlow)">
+    <!-- Antenna: thin stem + tip light above apex -->
+    <line x1="440" y1="130" x2="440" y2="110" stroke="#cfdcf2" stroke-width="0.9" opacity="0.55"/>
+    <circle cx="440" cy="107" r="2.2" fill="#67e8f9" opacity="0.85"/>
+
+    <!-- Eyes: small cyan LEDs -->
+    <circle cx="425" cy="270" r="3.0" fill="#67e8f9" opacity="0.92"/>
+    <circle cx="455" cy="270" r="3.0" fill="#67e8f9" opacity="0.92"/>
+
+    <!-- Mouth: faint indicator grille -->
+    <line x1="428" y1="305" x2="452" y2="305" stroke="#67e8f9" stroke-width="1.3" stroke-linecap="round" opacity="0.55"/>
+    <line x1="431" y1="310" x2="449" y2="310" stroke="#67e8f9" stroke-width="1"   stroke-linecap="round" opacity="0.3"/>
+  </g>
+
+  <!-- ===== Six refracted rays emerging from the right face ===== -->
+  <g filter="url(#softGlow)" stroke-width="2.8" stroke-linecap="round">
+    <line x1="485" y1="250" x2="715" y2="100" stroke="#e11d48"/>
+    <line x1="485" y1="250" x2="742" y2="166" stroke="#f97316"/>
+    <line x1="485" y1="250" x2="755" y2="221" stroke="#eab308"/>
+    <line x1="485" y1="250" x2="755" y2="282" stroke="#22c55e"/>
+    <line x1="485" y1="250" x2="742" y2="338" stroke="#3b82f6"/>
+    <line x1="485" y1="250" x2="715" y2="404" stroke="#a855f7"/>
+  </g>
+
+  <!-- Attribute labels -->
+  <g font-family="ui-serif, Georgia, 'Iowan Old Style', 'Times New Roman', serif"
+     font-size="22" font-style="italic" letter-spacing="0.01em">
+    <text x="724" y="102" fill="#fda4af">competent</text>
+    <text x="752" y="168" fill="#fdba74">friendly</text>
+    <text x="764" y="226" fill="#fde047">demanding</text>
+    <text x="764" y="289" fill="#86efac">polite</text>
+    <text x="752" y="343" fill="#93c5fd">formal</text>
+    <text x="724" y="411" fill="#d8b4fe">considerate</text>
+  </g>
+
+  <!-- Caption -->
+  <text x="450" y="475" text-anchor="middle"
+        font-family="ui-serif, Georgia, serif"
+        font-size="20" font-style="italic"
+        fill="#a8adb8"
+        letter-spacing="0.08em">
+    PRISMA &#183; Pragmatic Real-time Inference of Social Meaning in Agents
+  </text>
+</svg>

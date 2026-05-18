@@ -18,12 +18,12 @@ move from *Planned* to *In progress* to *Done* as the project evolves.
 > **TODO:** Get a single message in / response + evaluation out working
 > locally, even with a rough prompt.
 
-- [ ] Implement `src/config.py` (model id, attributes, turn cap)
-- [ ] Implement `src/prompt.py` (v1 dual-role prompt)
-- [ ] Implement `src/inference.py` (HF Inference client wrapper)
-- [ ] Implement `src/evaluation.py` (JSON parsing + validation)
-- [ ] Implement `app.py` (minimal Gradio UI)
-- [ ] First pytest tests for parsing/validation
+- [x] Implement `src/config.py` (model id, attributes, turn cap)
+- [x] Implement `src/prompt.py` (v1 dual-role prompt)
+- [x] Implement `src/inference.py` (HF Inference client wrapper)
+- [x] Implement `src/evaluation.py` (JSON parsing + validation)
+- [x] Implement `app.py` (minimal Gradio UI)
+- [x] First pytest tests for parsing/validation
 
 ## Milestone 3 — Prompt and UX iteration
 
@@ -54,3 +54,14 @@ move from *Planned* to *In progress* to *Done* as the project evolves.
 - [ ] "Compare models" mode
 - [ ] Downloadable conversation + evaluation transcript
 - [ ] Linguistic feature highlighting (which words/choices shifted scores)
+
+
+## Future work (v2+)
+
+### Attribute customization
+- User selects up to 6 attributes from a curated extended list (~15–20 
+  dimensions covering social, cognitive, affective, and pragmatic 
+  perception)
+- Extended list includes: pushy, knowledgeable, well-prepared, pedantic, 
+  helpful, arrogant, warm, evasive, confident, anxious, etc. (final set TBD)
+- v1's default set remains as the "quick start" option
