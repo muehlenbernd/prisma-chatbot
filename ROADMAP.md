@@ -5,7 +5,7 @@ move from *Planned* to *In progress* to *Done* as the project evolves.
 
 ## Milestone 1 — Scaffolding
 
-> **TODO:** Repo skeleton, docs, dependency manifest, env template,
+> **Done:** Repo skeleton, docs, dependency manifest, env template,
 > gitignore. No chatbot logic yet.
 
 - [x] Repo created, license added
@@ -15,7 +15,7 @@ move from *Planned* to *In progress* to *Done* as the project evolves.
 
 ## Milestone 2 — Minimal end-to-end loop
 
-> **TODO:** Get a single message in / response + evaluation out working
+> **Done:** Get a single message in / response + evaluation out working
 > locally, even with a rough prompt.
 
 - [x] Implement `src/config.py` (model id, attributes, turn cap)
@@ -27,18 +27,18 @@ move from *Planned* to *In progress* to *Done* as the project evolves.
 
 ## Milestone 3 — Prompt and UX iteration
 
-> **TODO:** Refine Prisma's voice, evaluation display, and the "check what
+> **In progress:** Refine Prisma's voice, evaluation display, and the "check what
 > I think" affordance.
 
-- [ ] Refine system prompt for voice consistency and structured-output
+- [x] Refine system prompt for voice consistency and structured-output
       reliability
-- [ ] Decide evaluation display: numeric, verbal, or both
-- [ ] Decide update cadence: live each turn vs. on-request
+- [x] Decide evaluation display: numeric, verbal, or both
+- [x] Decide update cadence: live each turn vs. on-request
 - [ ] About panel copy (`assets/about.md`)
 
 ## Milestone 4 — Public deployment
 
-> **TODO:** Ship to a Hugging Face Space and link from the README and
+> **Planned:** Ship to a Hugging Face Space and link from the README and
 > papers.
 
 - [ ] Hugging Face Space configuration
@@ -48,7 +48,7 @@ move from *Planned* to *In progress* to *Done* as the project evolves.
 
 ## Milestone 5 — Stretch ideas
 
-> **TODO:** Explicitly non-blocking; consider only after the demo is live
+> **Planned:** Explicitly non-blocking; consider only after the demo is live
 > and stable.
 
 - [ ] "Compare models" mode
