@@ -13,7 +13,7 @@ SESSION_TURN_CAP: int = 12
 
 MODEL_ID: str = "meta-llama/Llama-3.3-70B-Instruct"
 DEFAULT_TEMPERATURE: float = 0.7
-DEFAULT_MAX_TOKENS: int = 600
+DEFAULT_MAX_TOKENS: int = 1200
 
 
 DEFAULT_ATTRIBUTES: list[str] = [
@@ -24,3 +24,13 @@ DEFAULT_ATTRIBUTES: list[str] = [
     "formal",
     "demanding",
 ]
+
+# Color mapping for UI rendering (matches the PRISMA prism figure).
+ATTRIBUTE_COLORS: dict[str, str] = {
+    "competent": "#a855f7",   # purple
+    "likeable": "#f97316",    # orange
+    "considerate": "#22c55e", # green
+    "polite": "#eab308",      # yellow
+    "formal": "#3b82f6",      # blue
+    "demanding": "#e11d48",   # red
+}
