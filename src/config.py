@@ -7,6 +7,10 @@ the inference or prompt logic.
 Implementation pending — scaffolding only.
 """
 
+MIN_SCORE: int = 1
+MAX_SCORE: int = 7
+SESSION_TURN_CAP: int = 12
+
 DEFAULT_ATTRIBUTES: list[str] = [
     "competent",
     "likeable", 
