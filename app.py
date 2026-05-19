@@ -204,14 +204,32 @@ ul.options li.selected {
     box-shadow: 0 0 14px rgba(252, 211, 77, 0.45);
     pointer-events: none;
 }
+
+/* Warning/info/error toast notifications */
+.toast,
+.toast-body,
+.toast-text,
+.gr-toast,
+[class~="toast"] {
+    background-color: #2a2a44 !important;
+    color: #e5e7eb !important;
+    border: 1px solid #ef4444 !important;
+}
+.toast .icon,
+.toast svg,
+.gr-toast svg,
+[class~="toast"] svg {
+    color: #ef4444 !important;
+    fill: #ef4444 !important;
+}
 """
 
 
 # JS that highlights the user message at the currently-selected turn index.
-# Runs after dropdown changes and after each new turn is added.
+# Since errored attempts are no longer added to the chat, the dropdown's
+# turn index maps directly to the Nth user message in the DOM.
 HIGHLIGHT_TURN_JS = """
 (turn_index) => {
-    // Remove any existing highlight.
     document.querySelectorAll('.selected-turn').forEach(el => {
         el.classList.remove('selected-turn');
     });
@@ -220,8 +238,6 @@ HIGHLIGHT_TURN_JS = """
         return turn_index;
     }
 
-    // Find user message bubbles. Try several selectors since Gradio's
-    // chatbot DOM classes can vary; use the first that matches.
     const candidates = [
         '.message-row.user-row',
         '[data-testid="user"]',
@@ -266,6 +282,15 @@ def chat_step(
 ):
     """Process one user turn: call the model, update state and UI.
 
+    On success, the user message and assistant response are added to
+    ``chat_display`` and a new evaluation is recorded. On failure, the
+    chat is NOT modified — the error is surfaced via gr.Warning, and the
+    user's text is kept in the input box so they can edit and retry.
+
+    This keeps chat_display in perfect 1:1 correspondence with
+    ``state["evaluations"]``, so the dropdown's turn index always maps
+    cleanly to the Nth user message in the DOM.
+
     Returns updates for (chatbot, state, msg_in, turn_dropdown).
     """
     user_message = (user_message or "").strip()
@@ -288,24 +313,30 @@ def chat_step(
 
     try:
         parsed = CLIENT.generate(state["history"])
-        assistant_text = parsed.response
         state["history"].append(
-            {"role": "assistant", "content": assistant_text}
+            {"role": "assistant", "content": parsed.response}
         )
         state["evaluations"].append(parsed.evaluation)
         state["turn_count"] += 1
+
+        chat_display = chat_display + [
+            {"role": "user", "content": user_message},
+            {"role": "assistant", "content": parsed.response},
+        ]
+        msg_in_value = ""  # clear input on success
     except (InferenceError, EvaluationParseError) as exc:
         # Roll back the unanswered user message so retries send clean history.
         state["history"].pop()
-        assistant_text = (
-            "Something went wrong on Prisma's end — please try again. "
-            f"(Details: {exc})"
+        # Log technical details to the container log for debugging.
+        print(f"[error] {type(exc).__name__}: {exc}")
+        # Surface a friendly notification to the user without polluting the
+        # chat history. The error attempt does not appear as a bubble.
+        gr.Warning(
+            "I wasn't able to respond properly to that. "
+            "Try rephrasing or asking something else."
         )
-
-    chat_display = chat_display + [
-        {"role": "user", "content": user_message},
-        {"role": "assistant", "content": assistant_text},
-    ]
+        # Keep the user's text in the input box so they can edit and retry.
+        msg_in_value = user_message
 
     n_evals = len(state["evaluations"])
     if n_evals > 0:
@@ -314,7 +345,7 @@ def chat_step(
     else:
         dropdown_update = gr.Dropdown(choices=[], value=None)
 
-    return chat_display, state, "", dropdown_update
+    return chat_display, state, msg_in_value, dropdown_update
 
 
 # ---------------------------------------------------------------------------
