@@ -15,7 +15,6 @@ State held in ``gr.State``:
 from __future__ import annotations
 
 import os
-from pathlib import Path
 from typing import Any
 
 import gradio as gr
@@ -58,11 +57,6 @@ if not HF_TOKEN:
 CLIENT = PrismaInferenceClient(token=HF_TOKEN)
 SYSTEM_PROMPT = build_system_prompt()
 
-# Load the hero figure inline so it renders without needing Gradio's file
-# server. If the file is missing, the header just won't show an image.
-FIGURE_PATH = Path(__file__).parent / "assets" / "prisma-figure.svg"
-FIGURE_SVG = FIGURE_PATH.read_text() if FIGURE_PATH.exists() else ""
-
 
 # ---------------------------------------------------------------------------
 # Theme & CSS
@@ -86,34 +80,63 @@ THEME = gr.themes.Base(
 
 CUSTOM_CSS = """
 #prisma-header {
-    text-align: center;
-    padding: 1rem 0 2rem 0;
-}
-#prisma-header svg {
-    max-width: 640px;
-    width: 100%;
-    height: auto;
-    display: block;
-    margin: 0 auto 1rem auto;
+    padding: 0.5rem 0 1rem 0;
+    text-align: left;
 }
 #prisma-header h1 {
-    font-size: 2.75rem;
-    margin: 0.5rem 0 0.25rem 0;
+    font-size: 2.5rem;
+    margin: 0.25rem 0 0.25rem 0;
     letter-spacing: 0.05em;
 }
 #prisma-header .tagline {
-    font-size: 1.35rem;
+    font-size: 1.2rem;
     font-style: italic;
     color: #9ca3af;
-    margin: 0.25rem 0 0.5rem 0;
+    margin: 0 0 0.5rem 0;
 }
 #prisma-header .description {
-    font-size: 1.1rem;
+    font-size: 1rem;
     color: #cbd5e1;
-    max-width: 720px;
-    margin: 0.5rem auto;
-    line-height: 1.5;
+    line-height: 1.45;
+    margin: 0;
 }
+
+/* Dark backgrounds for text inputs (overrides theme defaults) */
+textarea,
+input[type="text"],
+input[type="search"] {
+    background-color: #1a1a2e !important;
+    color: #e5e7eb !important;
+    border-color: #2a2a44 !important;
+}
+
+/* Dropdown trigger */
+.gr-dropdown,
+.gr-dropdown > div,
+.gr-dropdown input {
+    background-color: #1a1a2e !important;
+    color: #e5e7eb !important;
+}
+
+/* Dropdown options when open */
+ul[role="listbox"],
+ul.options {
+    background-color: #1a1a2e !important;
+    color: #e5e7eb !important;
+    border: 1px solid #2a2a44 !important;
+}
+ul[role="listbox"] li,
+ul.options li {
+    background-color: #1a1a2e !important;
+    color: #e5e7eb !important;
+}
+ul[role="listbox"] li:hover,
+ul.options li:hover,
+ul[role="listbox"] li.selected,
+ul.options li.selected {
+    background-color: #2a2a44 !important;
+}
+
 #impressions-panel {
     flex: 0 0 360px !important;
     max-width: 360px !important;
@@ -144,6 +167,77 @@ CUSTOM_CSS = """
     font-style: italic;
     color: #9ca3af;
     padding: 0.5rem 0;
+}
+
+/* Chat message bubbles — override default light backgrounds */
+.message,
+.bubble,
+.bubble-wrap,
+.message-wrap .message,
+.message-row .message,
+[data-testid="user"] .message,
+[data-testid="bot"] .message,
+.user .bubble,
+.bot .bubble,
+.assistant .bubble {
+    background-color: #2a2a44 !important;
+    color: #e5e7eb !important;
+}
+
+/* User messages (right side) — slightly different shade for contrast */
+.message-row.user-row .message,
+[data-testid="user"] .message,
+.user .bubble {
+    background-color: #3d3d68 !important;
+}
+
+/* Highlight for the user message corresponding to the selected turn */
+.selected-turn {
+    position: relative;
+}
+.selected-turn::after {
+    content: "";
+    position: absolute;
+    top: -3px; left: -3px; right: -3px; bottom: -3px;
+    border-radius: 10px;
+    border: 2px solid #fcd34d;
+    box-shadow: 0 0 14px rgba(252, 211, 77, 0.45);
+    pointer-events: none;
+}
+"""
+
+
+# JS that highlights the user message at the currently-selected turn index.
+# Runs after dropdown changes and after each new turn is added.
+HIGHLIGHT_TURN_JS = """
+(turn_index) => {
+    // Remove any existing highlight.
+    document.querySelectorAll('.selected-turn').forEach(el => {
+        el.classList.remove('selected-turn');
+    });
+
+    if (turn_index === null || turn_index === undefined) {
+        return turn_index;
+    }
+
+    // Find user message bubbles. Try several selectors since Gradio's
+    // chatbot DOM classes can vary; use the first that matches.
+    const candidates = [
+        '.message-row.user-row',
+        '[data-testid="user"]',
+        '.message.user',
+        '.user'
+    ];
+    for (const selector of candidates) {
+        const messages = document.querySelectorAll(selector);
+        if (messages.length > 0) {
+            if (messages[turn_index]) {
+                messages[turn_index].classList.add('selected-turn');
+            }
+            break;
+        }
+    }
+    return turn_index;
 }
 """
 
@@ -277,6 +371,9 @@ def render_trajectory(state: dict[str, Any]):
     """Render a line plot of scores per attribute across turns.
 
     Colors match the bar cells so the rating list above acts as the legend.
+    A small fixed y-offset per attribute spreads overlapping points so every
+    attribute's marker remains visible when several share the same score on
+    the same turn.
     """
     evaluations = state.get("evaluations", [])
 
@@ -302,9 +399,18 @@ def render_trajectory(state: dict[str, Any]):
         plt.tight_layout()
         return fig
 
+    # Small fixed y-offset per attribute so overlapping points stay visible.
+    # Total spread is ±0.15 score units around the true score.
+    n = len(DEFAULT_ATTRIBUTES)
+    jitter_step = 0.06
+    jitter = {
+        attr: (i - (n - 1) / 2) * jitter_step
+        for i, attr in enumerate(DEFAULT_ATTRIBUTES)
+    }
+
     turns = list(range(1, len(evaluations) + 1))
     for attr in DEFAULT_ATTRIBUTES:
-        scores = [e[attr] for e in evaluations]
+        scores = [e[attr] + jitter[attr] for e in evaluations]
         ax.plot(
             turns,
             scores,
@@ -337,15 +443,14 @@ def render_trajectory(state: dict[str, Any]):
 with gr.Blocks(theme=THEME, css=CUSTOM_CSS, title="PRISMA") as demo:
 
     gr.HTML(
-        f"""
+        """
 <div id="prisma-header">
-  {FIGURE_SVG}
-  <h1>PRISMA</h1>
+  <h1>
+    <span style="color: #e11d48;">P</span><span style="color: #f97316;">R</span><span style="color: #eab308;">I</span><span style="color: #22c55e;">S</span><span style="color: #3b82f6;">M</span><span style="color: #a855f7;">A</span>
+  </h1>
   <p class="tagline">Have you ever wondered what your chatbot thinks about you?</p>
   <p class="description">
-    Chat with Prisma. She'll respond — and form impressions of you based on
-    how you write. Her view appears alongside the chat and updates after
-    every turn. Scroll back through the dropdown to see how her view shifted.
+    Chat with Prisma. She'll respond — and form impressions of you based on how you write.
   </p>
 </div>
 """
@@ -357,7 +462,7 @@ with gr.Blocks(theme=THEME, css=CUSTOM_CSS, title="PRISMA") as demo:
         with gr.Column(scale=1):
             chatbot = gr.Chatbot(
                 label="Chat with Prisma",
-                height=480,
+                height=600,
             )
             with gr.Row():
                 msg_in = gr.Textbox(
@@ -397,12 +502,22 @@ with gr.Blocks(theme=THEME, css=CUSTOM_CSS, title="PRISMA") as demo:
             render_trajectory,
             inputs=state,
             outputs=trajectory_plot,
+        ).then(
+            fn=None,
+            inputs=turn_dropdown,
+            outputs=None,
+            js=HIGHLIGHT_TURN_JS,
         )
 
     turn_dropdown.change(
         render_impression,
         inputs=[state, turn_dropdown],
         outputs=impressions_html,
+    ).then(
+        fn=None,
+        inputs=turn_dropdown,
+        outputs=None,
+        js=HIGHLIGHT_TURN_JS,
     )
 
 
