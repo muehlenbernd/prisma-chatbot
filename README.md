@@ -1,3 +1,17 @@
+---
+title: PRISMA
+emoji: 🌈
+colorFrom: purple
+colorTo: blue
+sdk: gradio
+sdk_version: 6.14.0
+app_file: app.py
+pinned: false
+license: mit
+short_description: Have you ever wondered what your chatbot thinks about you?
+---
+
+
 # prisma-chatbot
 
 > *Have you ever wondered what your chatbot thinks about you?*
