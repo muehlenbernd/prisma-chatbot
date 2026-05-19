@@ -22,8 +22,7 @@ from huggingface_hub import InferenceClient
 from huggingface_hub.utils import HfHubHTTPError
 
 from .config import DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, MODEL_ID
-from .evaluation import ParsedTurn, parse_model_output
-
+from .evaluation import EvaluationParseError, ParsedTurn, parse_model_output
 
 # Single chat message in OpenAI format. Kept loose for v1; can tighten to
 # a TypedDict later if message shapes diversify.
@@ -103,6 +102,7 @@ class PrismaInferenceClient:
         if not messages:
             raise ValueError("messages must not be empty")
 
+        
         try:
             completion = self._client.chat_completion(
                 model=self._model_id,
@@ -133,3 +133,4 @@ class PrismaInferenceClient:
             )
 
         return parse_model_output(raw)
+    
