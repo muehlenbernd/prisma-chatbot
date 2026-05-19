@@ -522,4 +522,4 @@ with gr.Blocks(theme=THEME, css=CUSTOM_CSS, title="PRISMA") as demo:
 
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(ssr_mode=False)
