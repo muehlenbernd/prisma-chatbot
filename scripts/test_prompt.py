@@ -28,8 +28,8 @@ from src.config import DEFAULT_ATTRIBUTES  # noqa: E402
 from src.prompt import build_system_prompt  # noqa: E402
 
 
-#MODEL_ID = "meta-llama/Llama-3.3-70B-Instruct"
-MODEL_ID = "Qwen/Qwen2.5-72B-Instruct"
+MODEL_ID = "meta-llama/Llama-3.3-70B-Instruct"
+#MODEL_ID = "Qwen/Qwen2.5-72B-Instruct"
 MAX_TOKENS = 600
 TEMPERATURE = 0.7
 
@@ -77,6 +77,7 @@ def query_model(
             ],
             max_tokens=MAX_TOKENS,
             temperature=TEMPERATURE,
+            response_format={"type": "json_object"},
         )
         raw = completion.choices[0].message.content
     except Exception as exc:
@@ -87,6 +88,7 @@ def query_model(
         return raw, json.loads(raw)
     except json.JSONDecodeError as exc:
         print(f"  [warn] JSON parse failed: {exc}")
+        print(f"  [raw] {raw[:400]!r}") 
         return raw, None
 
 
