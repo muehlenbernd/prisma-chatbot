@@ -15,6 +15,7 @@ State held in ``gr.State``:
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
 
 import gradio as gr
@@ -56,6 +57,30 @@ if not HF_TOKEN:
 
 CLIENT = PrismaInferenceClient(token=HF_TOKEN)
 SYSTEM_PROMPT = build_system_prompt()
+
+# Load the (small) footer figure inline if available; otherwise show a
+# discreet placeholder rectangle. Drop your finalized small figure at
+# assets/prisma-figure-footer.svg to replace the placeholder.
+FOOTER_FIGURE_PATH = Path(__file__).parent / "assets" / "prisma-figure-footer.svg"
+FOOTER_FIGURE_PLACEHOLDER = """
+<svg width="130" height="90" viewBox="0 0 130 90"
+     xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="PRISMA figure placeholder">
+  <rect width="130" height="90" rx="6"
+        fill="#1f1f33" stroke="#3d3d68" stroke-width="1"/>
+  <text x="65" y="42" text-anchor="middle"
+        fill="#9ca3af" font-family="serif"
+        font-size="11" font-style="italic">figure</text>
+  <text x="65" y="58" text-anchor="middle"
+        fill="#9ca3af" font-family="serif"
+        font-size="11" font-style="italic">placeholder</text>
+</svg>
+"""
+FOOTER_FIGURE_SVG = (
+    FOOTER_FIGURE_PATH.read_text()
+    if FOOTER_FIGURE_PATH.exists()
+    else FOOTER_FIGURE_PLACEHOLDER
+)
 
 
 # ---------------------------------------------------------------------------
@@ -222,6 +247,57 @@ ul.options li.selected {
     color: #ef4444 !important;
     fill: #ef4444 !important;
 }
+
+/* Footer */
+#prisma-footer {
+    padding: 1.5rem 1rem 0.75rem 1rem;
+    margin-top: 1.5rem;
+    border-top: 1px solid #2a2a44;
+}
+#prisma-footer .footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+}
+#prisma-footer .footer-left {
+    flex: 0 0 auto;
+}
+#prisma-footer .footer-left svg {
+    width: 260px;
+    height: auto;
+    display: block;
+}
+#prisma-footer .footer-center {
+    flex: 1;
+    text-align: center;
+}
+#prisma-footer .footer-right {
+    flex: 0 0 auto;
+    text-align: right;
+    font-size: 0.95rem;
+}
+#prisma-footer .prisma-fullname {
+    font-size: 1.1rem;
+    font-style: italic;
+    color: #9ca3af;
+    letter-spacing: 0.03em;
+    margin: 0 0 0.4rem 0;
+}
+#prisma-footer .footer-contact {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    margin: 0;
+}
+#prisma-footer .footer-right a {
+    color: #93c5fd;
+    text-decoration: none;
+    margin-left: 0.6rem;
+}
+#prisma-footer .footer-right a:hover {
+    color: #fcd34d;
+    text-decoration: underline;
+}
 """
 
 
@@ -286,10 +362,6 @@ def chat_step(
     ``chat_display`` and a new evaluation is recorded. On failure, the
     chat is NOT modified — the error is surfaced via gr.Warning, and the
     user's text is kept in the input box so they can edit and retry.
-
-    This keeps chat_display in perfect 1:1 correspondence with
-    ``state["evaluations"]``, so the dropdown's turn index always maps
-    cleanly to the Nth user message in the DOM.
 
     Returns updates for (chatbot, state, msg_in, turn_dropdown).
     """
@@ -518,6 +590,40 @@ with gr.Blocks(theme=THEME, css=CUSTOM_CSS, title="PRISMA") as demo:
                 ),
             )
             trajectory_plot = gr.Plot(value=render_trajectory({}), label=None)
+
+    # Footer: small figure, colored acronym expansion, contact + links.
+    # Update [Your Name], [Your Affiliation], and the href URLs below
+    # before deploying. The figure SVG file goes at
+    # assets/prisma-figure-footer.svg (placeholder shown until then).
+    gr.HTML(
+        f"""
+<div id="prisma-footer">
+  <div class="footer-row">
+    <div class="footer-left">
+      {FOOTER_FIGURE_SVG}
+    </div>
+    <div class="footer-center">
+      <p class="prisma-fullname">
+        <span style="color: #e11d48;">P</span>ragmatic
+        <span style="color: #f97316;">R</span>eal-time
+        <span style="color: #eab308;">I</span>nference of
+        <span style="color: #22c55e;">S</span>ocial
+        <span style="color: #3b82f6;">M</span>eaning in
+        <span style="color: #a855f7;">A</span>gents
+      </p>
+      <p class="footer-contact">
+        Roland Mühlenbernd · Leibniz-Centre General Linguistics, Berlin
+      </p>
+    </div>
+    <div class="footer-right">
+      <a href="https://muehlenbernd.net/" target="_blank" rel="noopener">Website</a>
+      <a href="https://github.com/muehlenbernd/prisma-chatbot" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://www.linkedin.com/in/rolandmuehlenbernd/" target="_blank" rel="noopener">LinkedIn</a>
+    </div>
+  </div>
+</div>
+"""
+    )
 
     # Same submit handler for Enter-key and Send button.
     for trigger in (send_btn.click, msg_in.submit):

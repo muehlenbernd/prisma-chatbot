@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 240" role="img" aria-label="PRISMA icon: a glass prism with a small robot face refracting a Hi! into the letters P R I S M A">
+  <defs>
+    <!-- Dark backdrop, matched to main figure -->
+    <radialGradient id="bg" cx="55%" cy="50%" r="65%">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#08080f"/>
+    </radialGradient>
+
+    <!-- White beam entering the prism -->
+    <linearGradient id="whiteBeam" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="50%"  stop-color="#ffffff" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="1"/>
+    </linearGradient>
+
+    <!-- Glass body gradient -->
+    <linearGradient id="prismGlass" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#9bb4d8" stop-opacity="0.22"/>
+      <stop offset="40%"  stop-color="#c8d6ee" stop-opacity="0.10"/>
+      <stop offset="70%"  stop-color="#a8b8d8" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#7a8db2" stop-opacity="0.28"/>
+    </linearGradient>
+
+    <!-- Specular highlight gradient -->
+    <linearGradient id="specular" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Chromatic fringe on exit face -->
+    <linearGradient id="chromaFringe" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.55"/>
+    </linearGradient>
+
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="beamGlow" x="-20%" y="-50%" width="140%" height="200%">
+      <feGaussianBlur stdDeviation="1.6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="ledGlow" x="-200%" y="-200%" width="500%" height="500%">
+      <feGaussianBlur stdDeviation="1.4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Subtle aura behind prism -->
+    <radialGradient id="prismAura" cx="50%" cy="55%" r="55%">
+      <stop offset="0%"   stop-color="#9bb4d8" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#9bb4d8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="600" height="240" fill="url(#bg)"/>
+
+  <!-- Atmospheric haze around prism -->
+  <ellipse cx="285" cy="120" rx="170" ry="120" fill="url(#prismAura)"/>
+
+  <!-- "Hi!" greeting on the left -->
+  <text x="20" y="138"
+        font-family="ui-monospace, 'SF Mono', 'Cascadia Code', monospace"
+        font-size="36" fill="#e5e7eb" opacity="0.95">&quot;Hi!&quot;</text>
+
+  <!-- White light beam entering the prism -->
+  <rect x="148" y="121" width="90" height="6" fill="url(#whiteBeam)" filter="url(#beamGlow)"/>
+
+  <!-- ===== Prism (glass-like, layered) ===== -->
+
+  <!-- Main glass body -->
+  <polygon points="280,35 200,200 360,200" fill="url(#prismGlass)"/>
+
+  <!-- Inset sheen polygon, suggests thickness -->
+  <polygon points="280,49 210,194 350,194"
+           fill="none" stroke="#cfdcf2" stroke-width="0.6" opacity="0.22"/>
+
+  <!-- Specular highlight on upper-left face -->
+  <polygon points="280,52 252,128 261,132 280,62"
+           fill="url(#specular)" opacity="0.9"/>
+
+  <!-- Chromatic fringe along right (exit) face -->
+  <line x1="279" y1="40" x2="358" y2="198"
+        stroke="url(#chromaFringe)" stroke-width="1.1" opacity="0.7"/>
+
+  <!-- Outer edges -->
+  <polygon points="280,35 200,200 360,200"
+           fill="none" stroke="#e8eefb" stroke-width="1.3" stroke-opacity="0.9"/>
+
+  <!-- Bright caustic on the leading (left) edge -->
+  <line x1="280" y1="35" x2="200" y2="200"
+        stroke="#ffffff" stroke-width="0.7" opacity="0.85"/>
+  <!-- Softer caustic on the base -->
+  <line x1="200" y1="200" x2="360" y2="200"
+        stroke="#ffffff" stroke-width="0.45" opacity="0.35"/>
+
+  <!-- Apex sparkle -->
+  <circle cx="280" cy="35" r="2" fill="#ffffff" opacity="0.9" filter="url(#ledGlow)"/>
+
+  <!-- ===== Robot-face LEDs ===== -->
+  <g filter="url(#ledGlow)">
+    <!-- Antenna -->
+    <line x1="280" y1="35" x2="280" y2="20" stroke="#cfdcf2" stroke-width="0.9" opacity="0.55"/>
+    <circle cx="280" cy="17" r="1.8" fill="#67e8f9" opacity="0.9"/>
+
+    <!-- Eyes -->
+    <circle cx="268" cy="128" r="2.6" fill="#67e8f9" opacity="0.92"/>
+    <circle cx="292" cy="128" r="2.6" fill="#67e8f9" opacity="0.92"/>
+
+    <!-- Mouth grille -->
+    <line x1="270" y1="158" x2="290" y2="158" stroke="#67e8f9" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
+    <line x1="273" y1="162" x2="287" y2="162" stroke="#67e8f9" stroke-width="0.9" stroke-linecap="round" opacity="0.3"/>
+  </g>
+
+  <!-- ===== Six refracted rays — short and thick ===== -->
+  <g filter="url(#softGlow)" stroke-width="5.5" stroke-linecap="round">
+    <line x1="320" y1="118" x2="450" y2="38"  stroke="#e11d48"/>
+    <line x1="320" y1="118" x2="478" y2="80"  stroke="#f97316"/>
+    <line x1="320" y1="118" x2="495" y2="112" stroke="#eab308"/>
+    <line x1="320" y1="118" x2="495" y2="146" stroke="#22c55e"/>
+    <line x1="320" y1="118" x2="478" y2="176" stroke="#3b82f6"/>
+    <line x1="320" y1="118" x2="450" y2="218" stroke="#a855f7"/>
+  </g>
+
+  <!-- PRISMA letters at the end of each ray -->
+  <g font-family="ui-serif, Georgia, 'Iowan Old Style', 'Times New Roman', serif"
+     font-size="32" font-style="italic" font-weight="500" letter-spacing="0.01em">
+    <text x="462" y="50"  fill="#fda4af">P</text>
+    <text x="490" y="92"  fill="#fdba74">R</text>
+    <text x="507" y="124" fill="#fde047">I</text>
+    <text x="507" y="158" fill="#86efac">S</text>
+    <text x="490" y="188" fill="#93c5fd">M</text>
+    <text x="462" y="230" fill="#d8b4fe">A</text>
+  </g>
+</svg>
