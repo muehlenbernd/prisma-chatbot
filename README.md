@@ -24,8 +24,8 @@ short_description: Have you ever wondered what your chatbot thinks about you?
 
 This project is a research-facing artifact accompanying published work on LLM social perception (CMCL 2026; EMNLP 2026, under review).
 
-**Live demo:** *coming soon (Hugging Face Space)*
-**Research papers:** [CMCL 2026 — link to be added] · [EMNLP 2026 — pending]
+**Live demo:** [huggingface.co/spaces/RolandM/prisma-chatbot](https://huggingface.co/spaces/RolandM/prisma-chatbot)
+**Research papers:** [CMCL 2026 (arXiv)](https://arxiv.org/abs/2604.02512) · EMNLP 2026 — under review
 
 ---
 
@@ -82,7 +82,7 @@ Prisma takes this research and makes it interactive: rather than aggregating mod
 ## Local setup
 
 ```bash
-git clone https://github.com/<your-username>/prisma-chatbot.git
+git clone https://github.com/muehlenbernd/prisma-chatbot.git
 cd prisma-chatbot
 python -m venv .venv
 source .venv/bin/activate          # macOS/Linux

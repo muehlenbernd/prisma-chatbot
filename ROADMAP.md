@@ -27,30 +27,30 @@ move from *Planned* to *In progress* to *Done* as the project evolves.
 
 ## Milestone 3 — Prompt and UX iteration
 
-> **In progress:** Refine Prisma's voice, evaluation display, and the "check what
+> **Done:** Refine Prisma's voice, evaluation display, and the "check what
 > I think" affordance.
 
 - [x] Refine system prompt for voice consistency and structured-output
       reliability
 - [x] Decide evaluation display: numeric, verbal, or both
 - [x] Decide update cadence: live each turn vs. on-request
-- [ ] About panel copy (`assets/about.md`)
 
 ## Milestone 4 — Public deployment
 
-> **Planned:** Ship to a Hugging Face Space and link from the README and
-> papers.
+> **Done:** Shipped to a Hugging Face Space and linked from the README.
 
-- [ ] Hugging Face Space configuration
-- [ ] Rate limiting / per-session turn cap
-- [ ] Public URL added to README and papers
-- [ ] Light usage analytics (anonymous, aggregate)
+- [x] Hugging Face Space configuration
+- [x] Per-session turn cap
+- [x] Public URL added to README and papers
 
 ## Milestone 5 — Stretch ideas
 
 > **Planned:** Explicitly non-blocking; consider only after the demo is live
 > and stable.
 
+- [ ] About panel copy (`assets/about.md`)
+- [ ] Rate limiting (per-IP / per-session beyond the turn cap)
+- [ ] Light usage analytics (anonymous, aggregate)
 - [ ] "Compare models" mode
 - [ ] Downloadable conversation + evaluation transcript
 - [ ] Linguistic feature highlighting (which words/choices shifted scores)

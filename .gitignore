@@ -52,3 +52,6 @@ Thumbs.db
 # Gradio / HF cache
 .gradio/
 flagged/
+
+# Local working notes (not for publication)
+_launch_prep.md
