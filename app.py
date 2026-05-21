@@ -305,6 +305,25 @@ ul.options li.selected {
     color: #fcd34d;
     text-decoration: underline;
 }
+
+/* Mobile: stack footer columns vertically and center them. */
+@media (max-width: 768px) {
+    #prisma-footer .footer-row {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+    #prisma-footer .footer-left svg {
+        width: 200px;
+    }
+    #prisma-footer .footer-center,
+    #prisma-footer .footer-right {
+        text-align: center;
+    }
+    #prisma-footer .footer-right a {
+        margin: 0 0.4rem;
+    }
+}
 """
 
 
