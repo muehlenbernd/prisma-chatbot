@@ -323,6 +323,14 @@ ul.options li.selected {
     #prisma-footer .footer-right a {
         margin: 0 0.4rem;
     }
+
+    /* Let the impressions panel match the chat-column width below it. */
+    #impressions-panel {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
 }
 """
 
