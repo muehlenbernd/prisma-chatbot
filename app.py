@@ -22,7 +22,7 @@ import gradio as gr
 import matplotlib
 
 matplotlib.use("Agg")  # non-interactive backend, required for server-side use
-import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib.figure import Figure  # noqa: E402
 
 from dotenv import load_dotenv  # noqa: E402
 
@@ -124,6 +124,13 @@ CUSTOM_CSS = """
     color: #cbd5e1;
     line-height: 1.45;
     margin: 0;
+}
+#prisma-header .disclaimer {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    font-style: italic;
+    line-height: 1.4;
+    margin: 0.5rem 0 0 0;
 }
 
 /* Dark backgrounds for text inputs (overrides theme defaults) */
@@ -480,7 +487,8 @@ def render_trajectory(state: dict[str, Any]):
     """
     evaluations = state.get("evaluations", [])
 
-    fig, ax = plt.subplots(figsize=(5, 3), facecolor="#1a1a2e")
+    fig = Figure(figsize=(5, 3), facecolor="#1a1a2e")
+    ax = fig.add_subplot(111)
     ax.set_facecolor("#1a1a2e")
 
     if not evaluations:
@@ -499,7 +507,7 @@ def render_trajectory(state: dict[str, Any]):
         ax.set_yticks([])
         for spine in ax.spines.values():
             spine.set_visible(False)
-        plt.tight_layout()
+        fig.tight_layout()
         return fig
 
     # Small fixed y-offset per attribute so overlapping points stay visible.
@@ -535,7 +543,7 @@ def render_trajectory(state: dict[str, Any]):
     for spine_name in ("bottom", "left"):
         ax.spines[spine_name].set_color("#9ca3af")
 
-    plt.tight_layout()
+    fig.tight_layout()
     return fig
 
 
@@ -554,6 +562,9 @@ with gr.Blocks(theme=THEME, css=CUSTOM_CSS, title="PRISMA") as demo:
   <p class="tagline">Have you ever wondered what your chatbot thinks about you?</p>
   <p class="description">
     Chat with Prisma. She'll respond — and form impressions of you based on how you write.
+  </p>
+  <p class="disclaimer">
+    Research demo. Evaluations are a language model's judgments, not a validated assessment.
   </p>
 </div>
 """
@@ -579,7 +590,7 @@ with gr.Blocks(theme=THEME, css=CUSTOM_CSS, title="PRISMA") as demo:
             gr.Markdown("### Prisma's impressions of you")
             turn_dropdown = gr.Dropdown(
                 choices=[],
-                label="View impression after which turn?",
+                label="Show impression after turn:",
                 interactive=True,
             )
             impressions_html = gr.HTML(
@@ -589,12 +600,13 @@ with gr.Blocks(theme=THEME, css=CUSTOM_CSS, title="PRISMA") as demo:
                     "</div>"
                 ),
             )
-            trajectory_plot = gr.Plot(value=render_trajectory({}), label=None)
+            trajectory_plot = gr.Plot(
+                value=render_trajectory(initial_state()), label=None
+            )
 
     # Footer: small figure, colored acronym expansion, contact + links.
-    # Update [Your Name], [Your Affiliation], and the href URLs below
-    # before deploying. The figure SVG file goes at
-    # assets/prisma-figure-footer.svg (placeholder shown until then).
+    # The figure SVG file goes at assets/prisma-figure-footer.svg;
+    # a placeholder rectangle is shown if the file is missing.
     gr.HTML(
         f"""
 <div id="prisma-footer">

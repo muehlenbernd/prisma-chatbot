@@ -55,11 +55,6 @@ def build_system_prompt(attributes: list[str] = DEFAULT_ATTRIBUTES) -> str:
         The fully-rendered system prompt string.
     """
     attribute_list = "\n".join(f"- {a}" for a in attributes)
-    json_schema = ",\n".join(
-        f'  "response": "your conversational reply here"' if i == 0 
-        else f'  "{a}": <integer 1-7>' 
-        for i, a in enumerate(["response"] + attributes)
-    )
     return SYSTEM_PROMPT_TEMPLATE.format(
         attribute_list=attribute_list,
         json_schema=_build_json_schema(attributes),
