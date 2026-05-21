@@ -25,6 +25,7 @@ short_description: Have you ever wondered what your chatbot thinks about you?
 This project is a research-facing artifact accompanying published work on LLM social perception (CMCL 2026; EMNLP 2026, under review).
 
 **Live demo:** [huggingface.co/spaces/RolandM/prisma-chatbot](https://huggingface.co/spaces/RolandM/prisma-chatbot)
+
 **Research papers:** [CMCL 2026 (arXiv)](https://arxiv.org/abs/2604.02512) · EMNLP 2026 — under review
 
 ---
