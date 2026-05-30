@@ -12,8 +12,8 @@ Each user turn flows through a single, linear path. The Gradio app
 `gr.State`, prepended with the dual-role system prompt built once at
 startup by `src.prompt.build_system_prompt`. The full history is handed
 to `PrismaInferenceClient.generate`, which calls Llama 3.3 70B Instruct
-via the Hugging Face Inference API with `response_format={"type":
-"json_object"}` and returns the raw JSON content. `parse_model_output`
+via Groq with `response_format={"type": "json_object"}` and returns the
+raw JSON content. `parse_model_output`
 strips any stray markdown fences, validates the schema (string
 `response`, integer scores per attribute in `[1, 7]`), and returns a
 `ParsedTurn`. The app then appends the assistant response to the chat
@@ -48,7 +48,7 @@ The model returns a JSON object with a string `response` field and an
 display reads `response` directly, and the impressions panel and
 trajectory plot iterate over `evaluation` without any natural-language
 parsing. JSON output is enforced both by the prompt and by passing
-`response_format={"type": "json_object"}` to the Inference API —
+`response_format={"type": "json_object"}` to the Groq API —
 belt-and-suspenders, because Llama 3.3 70B occasionally drifts toward
 conversational preamble before the JSON when relying on prompt
 instructions alone. Two defensive choices in `parse_model_output`
@@ -78,34 +78,43 @@ research framing is therefore *methodological* — surfacing the model's
 ongoing social perception of the user — rather than a literal
 replication of the paper's stimuli.
 
-### Llama 3.3 70B Instruct via HF Inference API
+### Llama 3.3 70B Instruct via Groq
 
-Hosted inference on Hugging Face was chosen over self-hosting and over
-proprietary APIs (OpenAI, Anthropic) for three reasons. First, the
+Hosted inference on Groq was chosen over self-hosting and over
+proprietary APIs (OpenAI, Anthropic) for two main reasons. First, the
 deployment surface is minimal: no GPU provisioning, no model serving,
-no separate auth domain — the Space and the model live on the same
-platform and a single `HF_TOKEN` covers both. Second, the audience that
-arrives via the research papers is already familiar with the Hugging
-Face platform and trusts it, which removes a friction point that a
-custom-hosted endpoint or a third-party key requirement would
-introduce. Third, a 70B-class instruct model is empirically the
-threshold at which the structured JSON contract holds reliably across
-varied conversational inputs and the dual-role persona is maintained
-without prompt drift; smaller open-weight models tend to break the
-schema or leak the evaluation rationale into the reply. The trade-off
-is dependency on HF endpoint availability and the (low) per-call rate
-limits applied to public Spaces, which the per-session turn cap
-(`SESSION_TURN_CAP = 12`) helps absorb.
+no separate auth domain — a single `GROQ_API_KEY` covers everything,
+which keeps the Space configuration to one secret. Second, a 70B-class
+instruct model is empirically the threshold at which the structured
+JSON contract holds reliably across varied conversational inputs and
+the dual-role persona is maintained without prompt drift; smaller
+open-weight models tend to break the schema or leak the evaluation
+rationale into the reply. A third, Groq-specific consideration is
+latency: the LPU hardware produces noticeably faster generation
+(~250–400 tok/sec vs. typical hosted-API ~30–50 tok/sec on the same
+model class), which keeps per-turn latency low enough for the running-
+evaluation paradigm to feel responsive — the impressions panel updates
+shortly after the reply lands, rather than after a perceptible wait.
+The trade-off is dependency on Groq endpoint availability and the
+free-tier per-minute rate limits, which throttle transiently rather
+than draining a fixed monthly pool; the per-session turn cap
+(`SESSION_TURN_CAP = 12`) absorbs typical demo bursts comfortably.
+
+An earlier version of the demo used the Hugging Face Inference API for
+the same model; the migration to Groq was prompted by free-tier credit
+depletion on HF and is, beyond the latency win above, otherwise
+behavior-preserving.
 
 ### Gradio on Hugging Face Spaces
 
 Gradio is the lowest-friction path to a public, shareable artifact: a
 single `app.py` declares the UI, the deployment is `git push`, and the
-HF Space provides the public URL and HTTPS termination. It also
-integrates natively with the HF Inference API used for the model call.
-The cost is limited UI flexibility compared to a custom React frontend,
-which is accepted because the demo's value is in the interaction
-itself, not in bespoke visual design.
+HF Space provides the public URL and HTTPS termination. The model call
+goes out to Groq (via the `groq` SDK), which is independent of the
+Space's hosting platform — the Space is purely the runtime and the UI
+shell. The cost is limited UI flexibility compared to a custom React
+frontend, which is accepted because the demo's value is in the
+interaction itself, not in bespoke visual design.
 
 ## Module responsibilities
 
@@ -117,12 +126,12 @@ itself, not in bespoke visual design.
   attribute list at module import time. Templated rather than hardcoded
   so that the v2 selectable attributes (see above) plug in without
   touching the inference layer.
-- `src/inference.py` — thin wrapper around `huggingface_hub.
-  InferenceClient`. Forces `response_format={"type": "json_object"}`
-  uniformly, distinguishes API errors (`InferenceError`) from parse
-  errors (`EvaluationParseError`) so the app layer can react
-  differently, and validates the response envelope before handing the
-  content to the parser.
+- `src/inference.py` — thin wrapper around the `groq` SDK client.
+  Forces `response_format={"type": "json_object"}` uniformly,
+  distinguishes API errors (`InferenceError`, wrapping `groq.APIError`
+  and its subclasses) from parse errors (`EvaluationParseError`) so the
+  app layer can react differently, and validates the response envelope
+  before handing the content to the parser.
 - `src/evaluation.py` — parses the JSON, validates the schema against
   the expected attribute list, and formats scores for display. Owns
   the intensifier scale (`1 → "not at all"`, ..., `7 → "extremely"`)

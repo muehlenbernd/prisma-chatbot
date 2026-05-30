@@ -1,7 +1,7 @@
-"""HF Inference API client wrapper for Prisma.
+"""Groq Inference API client wrapper for Prisma.
 
-Provides PrismaInferenceClient, a small wrapper around huggingface_hub's
-InferenceClient that:
+Provides PrismaInferenceClient, a small wrapper around the groq SDK's
+client that:
 - Forces JSON output via response_format={"type": "json_object"}.
   This is required for reliable structured output with Llama 3.3 70B,
   which otherwise produces conversational text before/instead of JSON.
@@ -9,7 +9,7 @@ InferenceClient that:
 - Raises typed errors for API failures (InferenceError) and parse
   failures (EvaluationParseError, propagated from evaluation).
 
-The wrapper is initialized once per session with an HF token; each
+The wrapper is initialized once per session with a Groq API key; each
 generate() call sends a full message history (system + conversation)
 and returns a validated ParsedTurn.
 """
@@ -18,8 +18,7 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from huggingface_hub import InferenceClient
-from huggingface_hub.utils import HfHubHTTPError
+from groq import APIError, Groq
 
 from .config import DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, MODEL_ID
 from .evaluation import ParsedTurn, parse_model_output
@@ -40,10 +39,10 @@ class InferenceError(Exception):
 
 
 class PrismaInferenceClient:
-    """Wrapper around huggingface_hub.InferenceClient configured for Prisma.
+    """Wrapper around the Groq client configured for Prisma.
 
-    Holds a single InferenceClient instance and exposes a ``generate()``
-    method that takes a full message history and returns a validated
+    Holds a single ``Groq`` instance and exposes a ``generate()`` method
+    that takes a full message history and returns a validated
     ``ParsedTurn``.
 
     JSON output is forced unconditionally via the ``response_format``
@@ -52,7 +51,7 @@ class PrismaInferenceClient:
     it uniformly for consistency across model families.
 
     Args:
-        token: HuggingFace access token with inference permissions.
+        token: Groq API key with inference permissions.
         model_id: Model to call. Defaults to ``MODEL_ID`` from config.
         temperature: Sampling temperature.
         max_tokens: Maximum tokens per response.
@@ -70,7 +69,7 @@ class PrismaInferenceClient:
     ) -> None:
         if not token:
             raise ValueError("token must be a non-empty string")
-        self._client = InferenceClient(token=token)
+        self._client = Groq(api_key=token)
         self._model_id = model_id
         self._temperature = temperature
         self._max_tokens = max_tokens
@@ -102,18 +101,17 @@ class PrismaInferenceClient:
         if not messages:
             raise ValueError("messages must not be empty")
 
-        
         try:
-            completion = self._client.chat_completion(
+            completion = self._client.chat.completions.create(
                 model=self._model_id,
                 messages=list(messages),
                 max_tokens=self._max_tokens,
                 temperature=self._temperature,
                 response_format={"type": "json_object"},
             )
-        except HfHubHTTPError as exc:
+        except APIError as exc:
             raise InferenceError(
-                f"HF Inference API request failed: {exc}"
+                f"Groq Inference API request failed: {exc}"
             ) from exc
         except Exception as exc:
             raise InferenceError(
@@ -133,4 +131,3 @@ class PrismaInferenceClient:
             )
 
         return parse_model_output(raw)
-    

@@ -48,14 +48,15 @@ from src.prompt import build_system_prompt  # noqa: E402
 # ---------------------------------------------------------------------------
 
 load_dotenv()
-HF_TOKEN = os.getenv("HF_TOKEN")
-if not HF_TOKEN:
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not GROQ_API_KEY:
     raise RuntimeError(
-        "HF_TOKEN not found. Set it in .env at the repo root "
-        "(see .env.example)."
+        "GROQ_API_KEY not found. For local development, set it in .env "
+        "at the repo root (see .env.example). On Hugging Face Spaces, "
+        "add it under Settings -> Variables and secrets."
     )
 
-CLIENT = PrismaInferenceClient(token=HF_TOKEN)
+CLIENT = PrismaInferenceClient(token=GROQ_API_KEY)
 SYSTEM_PROMPT = build_system_prompt()
 
 # Load the (small) footer figure inline if available; otherwise show a
@@ -578,7 +579,7 @@ def render_trajectory(state: dict[str, Any]):
 # UI
 # ---------------------------------------------------------------------------
 
-with gr.Blocks(theme=THEME, css=CUSTOM_CSS, title="PRISMA") as demo:
+with gr.Blocks(title="PRISMA") as demo:
 
     gr.HTML(
         """
@@ -604,6 +605,7 @@ with gr.Blocks(theme=THEME, css=CUSTOM_CSS, title="PRISMA") as demo:
             chatbot = gr.Chatbot(
                 label="Chat with Prisma",
                 height=600,
+                type="messages",
             )
             with gr.Row():
                 msg_in = gr.Textbox(
@@ -698,4 +700,4 @@ with gr.Blocks(theme=THEME, css=CUSTOM_CSS, title="PRISMA") as demo:
 
 
 if __name__ == "__main__":
-    demo.launch(ssr_mode=False)
+    demo.launch(theme=THEME, css=CUSTOM_CSS, ssr_mode=False)

@@ -32,7 +32,7 @@ This project is a research-facing artifact accompanying published work on LLM so
 
 ## What this is
 
-A Gradio app running on Hugging Face Spaces, powered by Llama 3.3 70B via the HF Inference API. On every turn, the model produces both a conversational response and an evaluation of the user across six social-perception dimensions. Evaluations are stored per turn, so the temporal trajectory of Prisma's impression is preserved and inspectable.
+A Gradio app running on Hugging Face Spaces, powered by Llama 3.3 70B served via Groq. On every turn, the model produces both a conversational response and an evaluation of the user across six social-perception dimensions. Evaluations are stored per turn, so the temporal trajectory of Prisma's impression is preserved and inspectable.
 
 ### The six dimensions (v1)
 
@@ -75,7 +75,7 @@ Prisma takes this research and makes it interactive: rather than aggregating mod
 
 - Python 3.11+
 - [Gradio](https://www.gradio.app/) — UI framework
-- [Hugging Face Inference API](https://huggingface.co/docs/inference-providers) — model serving
+- [Groq](https://console.groq.com/docs) — model serving
 - [Llama 3.3 70B Instruct](https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct) — base model
 
 ---
@@ -89,11 +89,11 @@ python -m venv .venv
 source .venv/bin/activate          # macOS/Linux
 pip install -r requirements.txt
 cp .env.example .env
-# Edit .env: add your HF_TOKEN
+# Edit .env: add your GROQ_API_KEY
 python app.py
 ```
 
-You'll need a Hugging Face account with access to Llama 3.3 70B (request access from the [model page](https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct)).
+You'll need a Groq account; create an API key at [console.groq.com/keys](https://console.groq.com/keys).
 
 ---
 
@@ -104,7 +104,7 @@ prisma-chatbot/
 ├── app.py                 # Gradio app entry point
 ├── src/
 │   ├── prompt.py          # System prompt construction
-│   ├── inference.py       # HF Inference API client wrapper
+│   ├── inference.py       # Groq Inference API client wrapper
 │   ├── evaluation.py      # Score parsing, validation, formatting
 │   └── config.py          # Default attributes, constants
 ├── scripts/

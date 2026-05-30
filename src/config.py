@@ -11,7 +11,8 @@ MIN_SCORE: int = 1
 MAX_SCORE: int = 7
 SESSION_TURN_CAP: int = 12
 
-MODEL_ID: str = "meta-llama/Llama-3.3-70B-Instruct"
+# Groq's identifier for Llama 3.3 70B Instruct.
+MODEL_ID: str = "llama-3.3-70b-versatile"
 DEFAULT_TEMPERATURE: float = 0.7
 DEFAULT_MAX_TOKENS: int = 1200
 
