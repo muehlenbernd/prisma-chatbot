@@ -605,7 +605,6 @@ with gr.Blocks(title="PRISMA") as demo:
             chatbot = gr.Chatbot(
                 label="Chat with Prisma",
                 height=600,
-                type="messages",
             )
             with gr.Row():
                 msg_in = gr.Textbox(
