@@ -59,6 +59,23 @@ Python, the validator rejects `True`/`False` explicitly — without that
 check, a model returning `true` for a score would silently pass type
 validation and be coerced to `1`.
 
+`json_object` mode guarantees only *syntactic* JSON validity, not schema
+conformance; in practice Llama 3.3 70B at temperature 0.7 occasionally
+produces JSON that omits or mis-types the `response` field (observed
+≈17% in early-session testing). Strict-schema mode
+(`response_format={"type": "json_schema", ...}`) would fix this at the
+generation boundary but is currently unsupported on
+`llama-3.3-70b-versatile` on Groq — it's restricted to the
+`openai/gpt-oss-*` and `meta-llama/llama-4-scout-*` families. As a
+safety net, `PrismaInferenceClient.generate` retries a single time on
+`EvaluationParseError` (no backoff — the failure is stochastic
+generation, so a fresh sample at the same temperature is the only thing
+that matters). The retry covers the common case invisibly and logs both
+the first-attempt failure and the second-attempt outcome so the
+residual rate can be tracked in production logs. `InferenceError` is
+*not* retried; that needs proper rate-limit-aware backoff and is
+deferred.
+
 ### Six evaluation attributes
 
 The v1 attribute set is *competent, likeable, considerate, polite,

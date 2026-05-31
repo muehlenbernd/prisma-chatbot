@@ -120,8 +120,9 @@ def test_generate_rejects_missing_choices():
             client.generate([{"role": "user", "content": "hi"}])
 
 
-def test_generate_propagates_parse_errors():
-    """Parse failures bubble up as EvaluationParseError, not InferenceError."""
+def test_generate_propagates_parse_errors_after_retry():
+    """If both attempts fail to parse, the error propagates and the API was
+    called exactly twice (not more)."""
     client = PrismaInferenceClient(token="groq_test")
     with patch.object(client, "_client") as mock_inner:
         mock_inner.chat.completions.create.return_value = _mock_completion(
@@ -129,3 +130,31 @@ def test_generate_propagates_parse_errors():
         )
         with pytest.raises(EvaluationParseError):
             client.generate([{"role": "user", "content": "hi"}])
+        assert mock_inner.chat.completions.create.call_count == 2
+
+
+# ---- generate(): retry-once on EvaluationParseError ----
+
+def test_generate_retries_once_on_parse_error():
+    """If the first sample fails to parse and the second succeeds, return the
+    second result and confirm the API was called exactly twice."""
+    client = PrismaInferenceClient(token="groq_test")
+    with patch.object(client, "_client") as mock_inner:
+        mock_inner.chat.completions.create.side_effect = [
+            _mock_completion("not json"),
+            _mock_completion(VALID_PAYLOAD),
+        ]
+        result = client.generate([{"role": "user", "content": "hi"}])
+    assert isinstance(result, ParsedTurn)
+    assert result.response == "Hi there!"
+    assert mock_inner.chat.completions.create.call_count == 2
+
+
+def test_generate_does_not_retry_on_inference_error():
+    """InferenceError must NOT trigger a retry — only EvaluationParseError does."""
+    client = PrismaInferenceClient(token="groq_test")
+    with patch.object(client, "_client") as mock_inner:
+        mock_inner.chat.completions.create.side_effect = RuntimeError("boom")
+        with pytest.raises(InferenceError, match="boom"):
+            client.generate([{"role": "user", "content": "hi"}])
+        assert mock_inner.chat.completions.create.call_count == 1

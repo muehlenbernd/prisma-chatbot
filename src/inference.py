@@ -21,7 +21,7 @@ from typing import Sequence
 from groq import APIError, Groq
 
 from .config import DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, MODEL_ID
-from .evaluation import ParsedTurn, parse_model_output
+from .evaluation import EvaluationParseError, ParsedTurn, parse_model_output
 
 # Single chat message in OpenAI format. Kept loose for v1; can tighten to
 # a TypedDict later if message shapes diversify.
@@ -82,6 +82,14 @@ class PrismaInferenceClient:
     def generate(self, messages: Sequence[ChatMessage]) -> ParsedTurn:
         """Send a chat completion request and return a parsed turn.
 
+        Retries once on ``EvaluationParseError`` with the same messages.
+        Llama 3.3 70B under ``json_object`` mode occasionally emits
+        syntactically valid JSON that omits or mis-types the ``response``
+        field; the failure is stochastic, so a fresh sample at the same
+        temperature usually parses cleanly. The retry handles that case
+        invisibly. Inference errors are *not* retried — those need proper
+        backoff against rate-limit headers and are deferred.
+
         Args:
             messages: Full chat history including the system message as the
                 first entry. Each message is a dict with ``role`` and
@@ -94,13 +102,24 @@ class PrismaInferenceClient:
         Raises:
             ValueError: If ``messages`` is empty.
             InferenceError: If the API call itself fails (auth, rate limit,
-                network, malformed response envelope).
-            EvaluationParseError: If the model's content cannot be parsed
-                or validated against the expected attribute schema.
+                network, malformed response envelope). Not retried.
+            EvaluationParseError: If two consecutive samples both fail to
+                parse or validate against the expected attribute schema.
         """
         if not messages:
             raise ValueError("messages must not be empty")
 
+        try:
+            return self._call_once(messages)
+        except EvaluationParseError as exc:
+            print(f"[retry] EvaluationParseError on first attempt: {exc}")
+
+        result = self._call_once(messages)
+        print("[retry] succeeded on second attempt.")
+        return result
+
+    def _call_once(self, messages: Sequence[ChatMessage]) -> ParsedTurn:
+        """One round-trip: API call, envelope check, parse. No retry."""
         try:
             completion = self._client.chat.completions.create(
                 model=self._model_id,
