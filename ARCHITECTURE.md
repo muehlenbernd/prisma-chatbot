@@ -67,12 +67,16 @@ produces JSON that omits or mis-types the `response` field (observed
 generation boundary but is currently unsupported on
 `llama-3.3-70b-versatile` on Groq — it's restricted to the
 `openai/gpt-oss-*` and `meta-llama/llama-4-scout-*` families. As a
-safety net, `PrismaInferenceClient.generate` retries a single time on
-`EvaluationParseError` (no backoff — the failure is stochastic
+safety net, `PrismaInferenceClient.generate` resamples up to
+`DEFAULT_MAX_ATTEMPTS` times (5 by default — 1 initial + 4 retries) on
+`EvaluationParseError`. No backoff: the failure is stochastic
 generation, so a fresh sample at the same temperature is the only thing
-that matters). The retry covers the common case invisibly and logs both
-the first-attempt failure and the second-attempt outcome so the
-residual rate can be tracked in production logs. `InferenceError` is
+that matters. Live testing showed a higher per-attempt failure rate than
+the initial brief assumed, with two attempts still surfacing a toast on
+some turns; the loop covers the common case invisibly and logs each
+failed attempt plus the eventual outcome so the residual rate can be
+tracked in production logs. The cost is bounded latency on the failure
+path (up to ~5× a normal turn) before the warning toast appears. `InferenceError` is
 *not* retried; that needs proper rate-limit-aware backoff and is
 deferred.
 

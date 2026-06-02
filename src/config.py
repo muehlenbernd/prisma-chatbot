@@ -16,6 +16,13 @@ MODEL_ID: str = "llama-3.3-70b-versatile"
 DEFAULT_TEMPERATURE: float = 0.7
 DEFAULT_MAX_TOKENS: int = 1200
 
+# Max attempts per turn before surfacing an EvaluationParseError to the user.
+# Llama 3.3 70B under json_object mode occasionally emits JSON that omits or
+# mis-types the 'response' field; resampling at the same temperature usually
+# fixes it, so we resample up to (DEFAULT_MAX_ATTEMPTS - 1) times before
+# giving up.
+DEFAULT_MAX_ATTEMPTS: int = 5
+
 
 DEFAULT_ATTRIBUTES: list[str] = [
     "competent",

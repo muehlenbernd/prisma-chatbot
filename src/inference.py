@@ -20,7 +20,12 @@ from typing import Sequence
 
 from groq import APIError, Groq
 
-from .config import DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, MODEL_ID
+from .config import (
+    DEFAULT_MAX_ATTEMPTS,
+    DEFAULT_MAX_TOKENS,
+    DEFAULT_TEMPERATURE,
+    MODEL_ID,
+)
 from .evaluation import EvaluationParseError, ParsedTurn, parse_model_output
 
 # Single chat message in OpenAI format. Kept loose for v1; can tighten to
@@ -55,9 +60,11 @@ class PrismaInferenceClient:
         model_id: Model to call. Defaults to ``MODEL_ID`` from config.
         temperature: Sampling temperature.
         max_tokens: Maximum tokens per response.
+        max_attempts: Max calls per turn before surfacing
+            ``EvaluationParseError`` to the caller. ``1`` disables retry.
 
     Raises:
-        ValueError: If ``token`` is empty.
+        ValueError: If ``token`` is empty or ``max_attempts < 1``.
     """
 
     def __init__(
@@ -66,13 +73,17 @@ class PrismaInferenceClient:
         model_id: str = MODEL_ID,
         temperature: float = DEFAULT_TEMPERATURE,
         max_tokens: int = DEFAULT_MAX_TOKENS,
+        max_attempts: int = DEFAULT_MAX_ATTEMPTS,
     ) -> None:
         if not token:
             raise ValueError("token must be a non-empty string")
+        if max_attempts < 1:
+            raise ValueError("max_attempts must be >= 1")
         self._client = Groq(api_key=token)
         self._model_id = model_id
         self._temperature = temperature
         self._max_tokens = max_tokens
+        self._max_attempts = max_attempts
 
     @property
     def model_id(self) -> str:
@@ -82,13 +93,14 @@ class PrismaInferenceClient:
     def generate(self, messages: Sequence[ChatMessage]) -> ParsedTurn:
         """Send a chat completion request and return a parsed turn.
 
-        Retries once on ``EvaluationParseError`` with the same messages.
-        Llama 3.3 70B under ``json_object`` mode occasionally emits
-        syntactically valid JSON that omits or mis-types the ``response``
-        field; the failure is stochastic, so a fresh sample at the same
-        temperature usually parses cleanly. The retry handles that case
-        invisibly. Inference errors are *not* retried — those need proper
-        backoff against rate-limit headers and are deferred.
+        Resamples up to ``self._max_attempts`` times on
+        ``EvaluationParseError`` with the same messages. Llama 3.3 70B
+        under ``json_object`` mode occasionally emits syntactically valid
+        JSON that omits or mis-types the ``response`` field; the failure
+        is stochastic, so fresh samples at the same temperature usually
+        parse cleanly. The loop handles that case invisibly. Inference
+        errors are *not* retried — those need proper backoff against
+        rate-limit headers and are deferred.
 
         Args:
             messages: Full chat history including the system message as the
@@ -103,20 +115,29 @@ class PrismaInferenceClient:
             ValueError: If ``messages`` is empty.
             InferenceError: If the API call itself fails (auth, rate limit,
                 network, malformed response envelope). Not retried.
-            EvaluationParseError: If two consecutive samples both fail to
+            EvaluationParseError: If all ``max_attempts`` samples fail to
                 parse or validate against the expected attribute schema.
         """
         if not messages:
             raise ValueError("messages must not be empty")
 
-        try:
-            return self._call_once(messages)
-        except EvaluationParseError as exc:
-            print(f"[retry] EvaluationParseError on first attempt: {exc}")
+        last_exc: EvaluationParseError | None = None
+        for attempt in range(1, self._max_attempts + 1):
+            try:
+                result = self._call_once(messages)
+            except EvaluationParseError as exc:
+                last_exc = exc
+                print(
+                    f"[retry] attempt {attempt}/{self._max_attempts} "
+                    f"failed: {exc}"
+                )
+                continue
+            if attempt > 1:
+                print(f"[retry] succeeded on attempt {attempt}.")
+            return result
 
-        result = self._call_once(messages)
-        print("[retry] succeeded on second attempt.")
-        return result
+        assert last_exc is not None  # loop only exits via return or exc
+        raise last_exc
 
     def _call_once(self, messages: Sequence[ChatMessage]) -> ParsedTurn:
         """One round-trip: API call, envelope check, parse. No retry."""
