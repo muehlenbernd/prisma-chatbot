@@ -30,7 +30,7 @@ DEFAULT_MAX_ATTEMPTS: int = 2
 # budget before other users get access.  Overridable via env var for easy
 # adjustment without a code redeploy.
 MAX_SESSIONS_PER_IP_PER_DAY: int = int(
-    os.environ.get("MAX_SESSIONS_PER_IP_PER_DAY", "10")
+    os.environ.get("MAX_SESSIONS_PER_IP_PER_DAY", "2")
 )
 
 
