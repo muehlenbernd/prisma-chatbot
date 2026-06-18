@@ -11,15 +11,14 @@ Each user turn flows through a single, linear path. The Gradio app
 (`app.py`) appends the user message to the running history held in
 `gr.State`, prepended with the dual-role system prompt built once at
 startup by `src.prompt.build_system_prompt`. The full history is handed
-to `PrismaInferenceClient.generate`, which calls Llama 3.3 70B Instruct
-via Groq with `response_format={"type": "json_object"}` and returns the
-raw JSON content. `parse_model_output`
-strips any stray markdown fences, validates the schema (string
-`response`, integer scores per attribute in `[1, 7]`), and returns a
-`ParsedTurn`. The app then appends the assistant response to the chat
-display, records the evaluation in state, and re-renders the
-impressions panel (colored bar cells) and the trajectory plot. There
-is exactly one model call per user turn.
+to `PrismaInferenceClient.generate`, which calls GPT-OSS 120B
+(`openai/gpt-oss-120b`) via Groq with a strict `json_schema`
+`response_format` and returns the raw JSON content. `parse_model_output`
+validates the schema (string `response`, integer scores per attribute in
+`[1, 7]`) and returns a `ParsedTurn`. The app then appends the assistant
+response to the chat display, records the evaluation in state, and
+re-renders the impressions panel (colored bar cells) and the trajectory
+plot. There is exactly one model call per user turn.
 
 ## Key design decisions
 
@@ -47,38 +46,34 @@ The model returns a JSON object with a string `response` field and an
 `[1, 7]`. This makes downstream rendering deterministic: the chat
 display reads `response` directly, and the impressions panel and
 trajectory plot iterate over `evaluation` without any natural-language
-parsing. JSON output is enforced both by the prompt and by passing
-`response_format={"type": "json_object"}` to the Groq API —
-belt-and-suspenders, because Llama 3.3 70B occasionally drifts toward
-conversational preamble before the JSON when relying on prompt
-instructions alone. Two defensive choices in `parse_model_output`
-deserve a note. Markdown code fences are stripped if present, because
-some model snapshots wrap structured output in ``` blocks despite
-instructions otherwise. And because `bool` is a subclass of `int` in
-Python, the validator rejects `True`/`False` explicitly — without that
-check, a model returning `true` for a score would silently pass type
-validation and be coerced to `1`.
+parsing.
 
-`json_object` mode guarantees only *syntactic* JSON validity, not schema
-conformance; in practice Llama 3.3 70B at temperature 0.7 occasionally
-produces JSON that omits or mis-types the `response` field (observed
-≈17% in early-session testing). Strict-schema mode
-(`response_format={"type": "json_schema", ...}`) would fix this at the
-generation boundary but is currently unsupported on
-`llama-3.3-70b-versatile` on Groq — it's restricted to the
-`openai/gpt-oss-*` and `meta-llama/llama-4-scout-*` families. As a
-safety net, `PrismaInferenceClient.generate` resamples up to
-`DEFAULT_MAX_ATTEMPTS` times (5 by default — 1 initial + 4 retries) on
-`EvaluationParseError`. No backoff: the failure is stochastic
-generation, so a fresh sample at the same temperature is the only thing
-that matters. Live testing showed a higher per-attempt failure rate than
-the initial brief assumed, with two attempts still surfacing a toast on
-some turns; the loop covers the common case invisibly and logs each
-failed attempt plus the eventual outcome so the residual rate can be
-tracked in production logs. The cost is bounded latency on the failure
-path (up to ~5× a normal turn) before the warning toast appears. `InferenceError` is
-*not* retried; that needs proper rate-limit-aware backoff and is
-deferred.
+JSON output is enforced via Groq's **strict `json_schema` mode**
+(`response_format={"type": "json_schema", "json_schema": {"strict": true,
+...}}`). Constrained decoding makes schema-non-conformant output
+structurally impossible — unlike the earlier `json_object` mode, which
+guaranteed only syntactic JSON validity and produced an `EvaluationParseError`
+at ≈17% frequency on `llama-3.3-70b-versatile` at temperature 0.7. The
+strict schema is built dynamically from `DEFAULT_ATTRIBUTES` by
+`_build_response_schema` in `src/inference.py` and cached on the client
+at construction time. All objects in the schema set
+`additionalProperties: false` and list every property in `required`, as
+required by Groq's strict mode spec.
+
+`parse_model_output` in `src/evaluation.py` is retained as a belt-and-
+suspenders validator; it catches the `bool`-as-`int` edge case
+(Python's `isinstance(True, int)` is `True`) that the JSON schema
+integer type alone cannot exclude. Markdown fence-stripping is also kept
+for defensive completeness, though strict mode makes stray fences
+unlikely.
+
+With parse failures now structurally impossible, `generate()` retries
+only on transport-level `InferenceError` (timeouts, 5xx) — one defensive
+retry, not five. `EvaluationParseError` propagates immediately (an
+unexpected failure worth surfacing). A dedicated `CapacityError` is
+raised when Groq returns HTTP 429 (project daily limit hit); the app
+layer catches it and shows a "daily capacity reached" toast rather than
+the generic error message.
 
 ### Six evaluation attributes
 
@@ -99,13 +94,13 @@ research framing is therefore *methodological* — surfacing the model's
 ongoing social perception of the user — rather than a literal
 replication of the paper's stimuli.
 
-### Llama 3.3 70B Instruct via Groq
+### GPT-OSS 120B via Groq
 
 Hosted inference on Groq was chosen over self-hosting and over
 proprietary APIs (OpenAI, Anthropic) for two main reasons. First, the
 deployment surface is minimal: no GPU provisioning, no model serving,
 no separate auth domain — a single `GROQ_API_KEY` covers everything,
-which keeps the Space configuration to one secret. Second, a 70B-class
+which keeps the Space configuration to one secret. Second, a large
 instruct model is empirically the threshold at which the structured
 JSON contract holds reliably across varied conversational inputs and
 the dual-role persona is maintained without prompt drift; smaller
@@ -116,15 +111,38 @@ latency: the LPU hardware produces noticeably faster generation
 model class), which keeps per-turn latency low enough for the running-
 evaluation paradigm to feel responsive — the impressions panel updates
 shortly after the reply lands, rather than after a perceptible wait.
-The trade-off is dependency on Groq endpoint availability and the
-free-tier per-minute rate limits, which throttle transiently rather
-than draining a fixed monthly pool; the per-session turn cap
-(`SESSION_TURN_CAP = 12`) absorbs typical demo bursts comfortably.
 
-An earlier version of the demo used the Hugging Face Inference API for
-the same model; the migration to Groq was prompted by free-tier credit
-depletion on HF and is, beyond the latency win above, otherwise
-behavior-preserving.
+The current model is `openai/gpt-oss-120b`. It was adopted on
+2026-06-18 following Groq's deprecation notice for
+`llama-3.3-70b-versatile` (effective immediately; decommission date
+August 16, 2026). Crucially, `gpt-oss-120b` is among the Groq model
+families that support strict `json_schema` mode, which resolves the
+≈17% `EvaluationParseError` rate observed on the previous model under
+`json_object` mode. An earlier version of the demo used the Hugging
+Face Inference API; migration to Groq was prompted by free-tier credit
+depletion on HF.
+
+### Rate limiting
+
+Two complementary layers protect against traffic spikes:
+
+1. **Per-session turn cap** (`SESSION_TURN_CAP = 12` in `src/config.py`).
+   Already present since Milestone 4. Bounds per-session token usage.
+
+2. **Per-IP daily session cap** (`MAX_SESSIONS_PER_IP_PER_DAY`, default 10,
+   overridable via env var). Implemented in `app.py` using Gradio's
+   `gr.Request` to read the client IP. An in-memory `defaultdict` keyed by
+   IP tracks sessions started today; the counter resets when the date
+   advances. This prevents a single visitor or bot from consuming the entire
+   Groq daily budget before other users can access the demo.
+
+3. **Groq project-level daily limits** (primary budget backstop). Configured
+   in the Groq console for `openai/gpt-oss-120b`: 10,000 requests/day and
+   3,000,000 tokens/day. At ~1,800 tokens/turn this covers roughly 1,650
+   turns/day while bounding worst-case spend to ~$1.80/day. When this ceiling
+   is hit, Groq returns HTTP 429; `PrismaInferenceClient._call_once` catches
+   `APIStatusError` with `status_code == 429` and raises `CapacityError`,
+   which `app.py` surfaces as a "daily capacity reached" toast.
 
 ### Gradio on Hugging Face Spaces
 
@@ -148,11 +166,11 @@ interaction itself, not in bespoke visual design.
   so that the v2 selectable attributes (see above) plug in without
   touching the inference layer.
 - `src/inference.py` — thin wrapper around the `groq` SDK client.
-  Forces `response_format={"type": "json_object"}` uniformly,
-  distinguishes API errors (`InferenceError`, wrapping `groq.APIError`
-  and its subclasses) from parse errors (`EvaluationParseError`) so the
-  app layer can react differently, and validates the response envelope
-  before handing the content to the parser.
+  Builds and caches the strict `json_schema` response_format dict from
+  `DEFAULT_ATTRIBUTES`; distinguishes transport errors (`InferenceError`),
+  parse failures (`EvaluationParseError`), and daily-cap hits
+  (`CapacityError`) so the app layer can react differently; validates the
+  response envelope before handing the content to the parser.
 - `src/evaluation.py` — parses the JSON, validates the schema against
   the expected attribute list, and formats scores for display. Owns
   the intensifier scale (`1 → "not at all"`, ..., `7 → "extremely"`)

@@ -55,3 +55,6 @@ flagged/
 
 # Local working notes (not for publication)
 _launch_prep.md
+PRISMA_UPDATE.md
+GROQ_MIGRATION.md
+SCHEMA_RETRY.md

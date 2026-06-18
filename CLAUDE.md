@@ -52,9 +52,10 @@ constant character performance.
 
 **Frontend:** Gradio app deployed on Hugging Face Spaces.
 **Backend:** Single LLM call per turn, dual-role prompt (response + evaluation).
-**Model:** Llama 3.3 70B Instruct via Hugging Face Inference API.
+**Model:** GPT-OSS 120B (`openai/gpt-oss-120b`) via Groq.
 **Output format:** Structured JSON with `response` (string) and `evaluation`
-(object with six attribute scores 1–7).
+(object with six attribute scores 1–7), enforced via Groq's `json_schema`
+strict mode — constrained decoding guarantees schema-compliant output.
 
 **Evaluation dimensions (v1 default set):** competent, likeable, 
 considerate, polite, formal, demanding. v1 ships with this fixed 
@@ -75,7 +76,7 @@ metaphor and PRISMA acronym both lean into this real-time aspect.
 
 - Python 3.11+
 - Gradio (UI framework)
-- `huggingface_hub` (Inference API client)
+- `groq` (Groq Inference API client)
 - `python-dotenv` (local secrets)
 - `pytest` (testing)
 

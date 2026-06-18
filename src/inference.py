@@ -2,12 +2,25 @@
 
 Provides PrismaInferenceClient, a small wrapper around the groq SDK's
 client that:
-- Forces JSON output via response_format={"type": "json_object"}.
-  This is required for reliable structured output with Llama 3.3 70B,
-  which otherwise produces conversational text before/instead of JSON.
-- Parses and validates the response via src.evaluation.
+- Forces structured JSON output via Groq's json_schema strict mode.
+  This constrains decoding to a predefined schema, making schema-
+  non-conformant output structurally impossible (unlike json_object mode,
+  which only guarantees syntactic JSON validity).
+- Parses and validates the response via src.evaluation as a belt-and-
+  suspenders check.
 - Raises typed errors for API failures (InferenceError) and parse
   failures (EvaluationParseError, propagated from evaluation).
+- Surfaces a user-friendly CapacityError when the project's Groq-side
+  daily rate limit is hit (HTTP 429 with a daily-limit body).
+
+Project-level Groq rate limits for openai/gpt-oss-120b (set in the Groq
+console — adjust there if traffic patterns change, not here):
+    Requests per Minute : 1,000
+    Requests per Day    : 10,000
+    Tokens per Minute   : 250,000
+    Tokens per Day      : 3,000,000
+At ~1,800 tokens/turn this covers roughly 1,650 turns/day, bounding
+worst-case spend to ~$1.80/day.
 
 The wrapper is initialized once per session with a Groq API key; each
 generate() call sends a full message history (system + conversation)
@@ -16,11 +29,12 @@ and returns a validated ParsedTurn.
 
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Any, Sequence
 
-from groq import APIError, Groq
+from groq import APIError, APIStatusError, Groq
 
 from .config import (
+    DEFAULT_ATTRIBUTES,
     DEFAULT_MAX_ATTEMPTS,
     DEFAULT_MAX_TOKENS,
     DEFAULT_TEMPERATURE,
@@ -28,40 +42,94 @@ from .config import (
 )
 from .evaluation import EvaluationParseError, ParsedTurn, parse_model_output
 
-# Single chat message in OpenAI format. Kept loose for v1; can tighten to
-# a TypedDict later if message shapes diversify.
+# Single chat message in OpenAI format.
 ChatMessage = dict[str, str]
+
+# HTTP status code Groq returns when a project-level rate limit is hit.
+_GROQ_RATE_LIMIT_STATUS = 429
 
 
 class InferenceError(Exception):
     """Raised when the inference API call fails or returns malformed data.
 
-    Wraps network errors, authentication failures, rate-limit errors,
-    and missing-field errors in the API response. Parse errors on the
+    Wraps network errors, authentication failures, non-capacity rate-limit
+    errors, and missing-field errors in the API response. Parse errors on the
     model's content are *not* wrapped here — they surface as
     EvaluationParseError so the app layer can distinguish them.
     """
+
+
+class CapacityError(Exception):
+    """Raised when the project's Groq daily rate limit (429) is hit.
+
+    Distinct from InferenceError so the app layer can show a specific
+    'demo at capacity' message rather than a generic error.
+    """
+
+
+def _build_response_schema(attributes: list[str]) -> dict[str, Any]:
+    """Build the Groq strict-mode json_schema response_format dict.
+
+    The schema mirrors what parse_model_output validates: a root object
+    with a string 'response' field and an 'evaluation' object mapping each
+    attribute name to an integer.  Every object has additionalProperties
+    false and every property is listed in required, as required by strict mode.
+
+    Args:
+        attributes: Ordered list of evaluation attribute names, sourced from
+            DEFAULT_ATTRIBUTES in config.
+
+    Returns:
+        A response_format dict ready to pass to the Groq completions API.
+    """
+    evaluation_properties: dict[str, Any] = {
+        attr: {"type": "integer"} for attr in attributes
+    }
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "prisma_evaluation",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "response": {"type": "string"},
+                    "evaluation": {
+                        "type": "object",
+                        "properties": evaluation_properties,
+                        "required": list(attributes),
+                        "additionalProperties": False,
+                    },
+                },
+                "required": ["response", "evaluation"],
+                "additionalProperties": False,
+            },
+        },
+    }
 
 
 class PrismaInferenceClient:
     """Wrapper around the Groq client configured for Prisma.
 
     Holds a single ``Groq`` instance and exposes a ``generate()`` method
-    that takes a full message history and returns a validated
-    ``ParsedTurn``.
+    that takes a full message history and returns a validated ``ParsedTurn``.
 
-    JSON output is forced unconditionally via the ``response_format``
-    parameter. This is required for Llama 3.3 70B and harmless on models
-    that already comply with prompt-level JSON instructions, so we apply
-    it uniformly for consistency across model families.
+    JSON output is constrained via Groq's strict json_schema mode, which
+    prevents schema-non-conformant output at the generation level.
+    parse_model_output is retained as a belt-and-suspenders validator.
+
+    Retries are limited to one defensive retry on transport-level
+    InferenceErrors (timeouts, 5xx errors).  EvaluationParseError is not
+    retried — with strict mode active, parse failures indicate something
+    unexpected and surfacing them immediately is the right call.
 
     Args:
         token: Groq API key with inference permissions.
         model_id: Model to call. Defaults to ``MODEL_ID`` from config.
         temperature: Sampling temperature.
         max_tokens: Maximum tokens per response.
-        max_attempts: Max calls per turn before surfacing
-            ``EvaluationParseError`` to the caller. ``1`` disables retry.
+        max_attempts: Max calls per turn before surfacing an error. ``1``
+            disables retry. Applies to transport-level failures only.
 
     Raises:
         ValueError: If ``token`` is empty or ``max_attempts < 1``.
@@ -84,6 +152,9 @@ class PrismaInferenceClient:
         self._temperature = temperature
         self._max_tokens = max_tokens
         self._max_attempts = max_attempts
+        # Build and cache the response_format dict once; it only depends on
+        # the (fixed) attribute list and never changes at runtime.
+        self._response_format = _build_response_schema(DEFAULT_ATTRIBUTES)
 
     @property
     def model_id(self) -> str:
@@ -93,14 +164,9 @@ class PrismaInferenceClient:
     def generate(self, messages: Sequence[ChatMessage]) -> ParsedTurn:
         """Send a chat completion request and return a parsed turn.
 
-        Resamples up to ``self._max_attempts`` times on
-        ``EvaluationParseError`` with the same messages. Llama 3.3 70B
-        under ``json_object`` mode occasionally emits syntactically valid
-        JSON that omits or mis-types the ``response`` field; the failure
-        is stochastic, so fresh samples at the same temperature usually
-        parse cleanly. The loop handles that case invisibly. Inference
-        errors are *not* retried — those need proper backoff against
-        rate-limit headers and are deferred.
+        Retries up to ``self._max_attempts`` times on transport-level
+        ``InferenceError`` (timeouts, 5xx).  ``EvaluationParseError`` and
+        ``CapacityError`` are not retried and propagate immediately.
 
         Args:
             messages: Full chat history including the system message as the
@@ -113,30 +179,34 @@ class PrismaInferenceClient:
 
         Raises:
             ValueError: If ``messages`` is empty.
-            InferenceError: If the API call itself fails (auth, rate limit,
-                network, malformed response envelope). Not retried.
-            EvaluationParseError: If all ``max_attempts`` samples fail to
-                parse or validate against the expected attribute schema.
+            CapacityError: If Groq returns a 429 indicating the project's
+                daily rate limit has been reached.
+            InferenceError: If all ``max_attempts`` calls fail due to
+                transport errors (auth, 5xx, network, malformed envelope).
+            EvaluationParseError: If the response fails schema validation
+                despite strict mode. Propagates immediately without retry.
         """
         if not messages:
             raise ValueError("messages must not be empty")
 
-        last_exc: EvaluationParseError | None = None
+        last_exc: InferenceError | None = None
         for attempt in range(1, self._max_attempts + 1):
             try:
-                result = self._call_once(messages)
-            except EvaluationParseError as exc:
+                return self._call_once(messages)
+            except CapacityError:
+                # Daily cap hit — surface immediately, no retry.
+                raise
+            except EvaluationParseError:
+                # Strict mode makes this unexpected; surface immediately.
+                raise
+            except InferenceError as exc:
                 last_exc = exc
                 print(
                     f"[retry] attempt {attempt}/{self._max_attempts} "
-                    f"failed: {exc}"
+                    f"transport error: {exc}"
                 )
-                continue
-            if attempt > 1:
-                print(f"[retry] succeeded on attempt {attempt}.")
-            return result
 
-        assert last_exc is not None  # loop only exits via return or exc
+        assert last_exc is not None
         raise last_exc
 
     def _call_once(self, messages: Sequence[ChatMessage]) -> ParsedTurn:
@@ -147,8 +217,16 @@ class PrismaInferenceClient:
                 messages=list(messages),
                 max_tokens=self._max_tokens,
                 temperature=self._temperature,
-                response_format={"type": "json_object"},
+                response_format=self._response_format,
             )
+        except APIStatusError as exc:
+            if exc.status_code == _GROQ_RATE_LIMIT_STATUS:
+                raise CapacityError(
+                    "Groq project daily rate limit reached"
+                ) from exc
+            raise InferenceError(
+                f"Groq API error (HTTP {exc.status_code}): {exc}"
+            ) from exc
         except APIError as exc:
             raise InferenceError(
                 f"Groq Inference API request failed: {exc}"

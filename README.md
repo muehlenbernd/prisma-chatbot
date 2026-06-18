@@ -32,7 +32,7 @@ This project is a research-facing artifact accompanying published work on LLM so
 
 ## What this is
 
-A Gradio app running on Hugging Face Spaces, powered by Llama 3.3 70B served via Groq. On every turn, the model produces both a conversational response and an evaluation of the user across six social-perception dimensions. Evaluations are stored per turn, so the temporal trajectory of Prisma's impression is preserved and inspectable.
+A Gradio app running on Hugging Face Spaces, powered by GPT-OSS 120B served via Groq. On every turn, the model produces both a conversational response and an evaluation of the user across six social-perception dimensions. Evaluations are stored per turn, so the temporal trajectory of Prisma's impression is preserved and inspectable.
 
 ### The six dimensions (v1)
 
@@ -76,7 +76,7 @@ Prisma takes this research and makes it interactive: rather than aggregating mod
 - Python 3.11+
 - [Gradio](https://www.gradio.app/) — UI framework
 - [Groq](https://console.groq.com/docs) — model serving
-- [Llama 3.3 70B Instruct](https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct) — base model
+- [GPT-OSS 120B](https://console.groq.com/docs/openai-models) (`openai/gpt-oss-120b`) — base model
 
 ---
 
@@ -120,10 +120,9 @@ prisma-chatbot/
 
 ## Roadmap
 
-**v1** (current): Llama 3.3 70B, six fixed default attributes, toggleable impressions panel with per-turn navigation, 12-turn session cap.
+**v1** (current): GPT-OSS 120B (`openai/gpt-oss-120b`) via Groq with strict JSON schema output, six fixed default attributes, always-visible impressions panel (colored bar cells + trajectory plot) with per-turn navigation, 12-turn session cap, per-IP daily session limit.
 
 **v2** (planned):
-- Graphical impressions: bar plots of current scores, line plot of trajectory across turns
 - Attribute customization: users select up to 6 dimensions from an extended list (~15–20 options including *knowledgeable*, *well-prepared*, *pedantic*, *pushy*, *helpful*, *warm*, *arrogant*, *evasive*, ...)
 - Compare-models mode: same conversation, side-by-side perceptions by different models
 

@@ -15,6 +15,8 @@ State held in ``gr.State``:
 from __future__ import annotations
 
 import os
+from collections import defaultdict
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +32,7 @@ from src.config import (  # noqa: E402
     ATTRIBUTE_COLORS,
     DEFAULT_ATTRIBUTES,
     MAX_SCORE,
+    MAX_SESSIONS_PER_IP_PER_DAY,
     SESSION_TURN_CAP,
 )
 from src.evaluation import (  # noqa: E402
@@ -37,6 +40,7 @@ from src.evaluation import (  # noqa: E402
     EvaluationParseError,
 )
 from src.inference import (  # noqa: E402
+    CapacityError,
     InferenceError,
     PrismaInferenceClient,
 )
@@ -58,6 +62,16 @@ if not GROQ_API_KEY:
 
 CLIENT = PrismaInferenceClient(token=GROQ_API_KEY)
 SYSTEM_PROMPT = build_system_prompt()
+
+# ---------------------------------------------------------------------------
+# Per-IP rate limiting
+# ---------------------------------------------------------------------------
+# In-memory counters: keyed by IP address, tracking how many sessions each
+# IP has started today.  Resets automatically at the next server restart or
+# when the date advances (checked on every request).
+# Persistence across restarts is intentionally not required.
+_ip_session_counts: dict[str, int] = defaultdict(int)
+_ip_count_date: date = date.today()
 
 # Load the (small) footer figure inline if available; otherwise show a
 # discreet placeholder rectangle. Drop your finalized small figure at
@@ -390,6 +404,7 @@ def chat_step(
     user_message: str,
     chat_display: list[dict[str, str]],
     state: dict[str, Any],
+    request: gr.Request,
 ):
     """Process one user turn: call the model, update state and UI.
 
@@ -398,11 +413,40 @@ def chat_step(
     chat is NOT modified — the error is surfaced via gr.Warning, and the
     user's text is kept in the input box so they can edit and retry.
 
-    Returns updates for (chatbot, state, msg_in, turn_dropdown).
+    Args:
+        user_message: Text typed by the user.
+        chat_display: Current list of displayed messages.
+        state: Session state dict (history, evaluations, turn_count).
+        request: Gradio request object; used to read the client IP for
+            per-IP rate limiting.
+
+    Returns:
+        Updates for (chatbot, state, msg_in, turn_dropdown).
     """
+    global _ip_session_counts, _ip_count_date
+
     user_message = (user_message or "").strip()
     if not user_message:
         return chat_display, state, "", gr.Dropdown()
+
+    # Reset daily counters if the date has rolled over.
+    today = date.today()
+    if today != _ip_count_date:
+        _ip_session_counts = defaultdict(int)
+        _ip_count_date = today
+
+    # Per-IP session cap: count each session's first turn only.
+    if state["turn_count"] == 0:
+        client_ip = (
+            request.client.host if request and request.client else "unknown"
+        )
+        if _ip_session_counts[client_ip] >= MAX_SESSIONS_PER_IP_PER_DAY:
+            gr.Warning(
+                "You've reached the daily session limit for this demo. "
+                "Please check back tomorrow."
+            )
+            return chat_display, state, user_message, gr.Dropdown()
+        _ip_session_counts[client_ip] += 1
 
     # Session cap reached — refuse further requests.
     if state["turn_count"] >= SESSION_TURN_CAP:
@@ -431,6 +475,14 @@ def chat_step(
             {"role": "assistant", "content": parsed.response},
         ]
         msg_in_value = ""  # clear input on success
+    except CapacityError as exc:
+        state["history"].pop()
+        print(f"[error] {type(exc).__name__}: {exc}")
+        gr.Warning(
+            "This demo has reached its daily capacity — please check back "
+            "tomorrow."
+        )
+        msg_in_value = user_message
     except (InferenceError, EvaluationParseError) as exc:
         # Roll back the unanswered user message so retries send clean history.
         state["history"].pop()
