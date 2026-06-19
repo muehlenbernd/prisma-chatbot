@@ -750,5 +750,10 @@ with gr.Blocks(title="PRISMA") as demo:
     )
 
 
+GOATCOUNTER_HEAD = """
+<script data-goatcounter="https://muehlenbernd.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+"""
+
 if __name__ == "__main__":
-    demo.launch(theme=THEME, css=CUSTOM_CSS, ssr_mode=False)
+    demo.launch(theme=THEME, css=CUSTOM_CSS, ssr_mode=False, head=GOATCOUNTER_HEAD)
