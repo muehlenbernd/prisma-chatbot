@@ -63,6 +63,16 @@ move from *Planned* to *In progress* to *Done* as the project evolves.
       mask stochastic JSON drift under `json_object` mode
 - [x] Gradio 6.x compatibility fixes (theme/css on `launch()`, Chatbot API)
 
+## Milestone 4c — Analytics
+
+> **Done:** Lightweight, privacy-friendly usage analytics via Goatcounter.
+
+- [x] Goatcounter script injected into page `<head>` via Gradio's `head`
+      parameter on `demo.launch()`
+- [x] Dedicated PRISMA site at `prisma-rolandm.goatcounter.com` (separate
+      from the main personal site — keeps demo traffic as a clean standalone
+      signal, useful for measuring TDS/LinkedIn post impact)
+
 ## Milestone 5 — Stretch ideas
 
 > **Planned:** Explicitly non-blocking; consider only after the demo is live

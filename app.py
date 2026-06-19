@@ -751,7 +751,7 @@ with gr.Blocks(title="PRISMA") as demo:
 
 
 GOATCOUNTER_HEAD = """
-<script data-goatcounter="https://muehlenbernd.goatcounter.com/count"
+<script data-goatcounter="https://prisma-rolandm.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 """
 
